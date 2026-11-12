@@ -1,0 +1,9 @@
+{
+  "pipe_id": "P3",
+  "leak_area": 0.0005,
+  "start_time": 7200,
+  "end_time": 43200,
+  "split_position": 0.5,
+  "discharge_coefficient": 0.75,
+  "pressure_drop_threshold": 2.0
+}
