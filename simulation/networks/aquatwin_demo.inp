@@ -1,0 +1,85 @@
+[TITLE]
+AquaTwin-X demonstration loop network
+
+[JUNCTIONS]
+;ID        Elevation   Demand      Pattern
+ J1        10          5           1
+ J2        12          6           1
+ J3        11          5           1
+ J4        13          4           1
+
+[RESERVOIRS]
+;ID        Head        Pattern
+ R1        60
+
+[TANKS]
+;ID        Elevation   InitLevel   MinLevel    MaxLevel    Diameter    MinVol
+
+[PIPES]
+;ID        Node1       Node2       Length      Diameter    Roughness   MinorLoss   Status
+ P1        R1          J1          800         300         120         0           Open
+ P2        J1          J2          600         250         120         0           Open
+ P3        J2          J3          700         250         120         0           Open
+ P4        J3          J4          600         250         120         0           Open
+ P5        J4          J1          700         250         120         0           Open
+ P6        J2          J4          500         200         115         0           Open
+
+[PUMPS]
+;ID        Node1       Node2       Parameters
+
+[VALVES]
+;ID        Node1       Node2       Diameter    Type    Setting     MinorLoss
+
+[DEMANDS]
+;Junction  Demand      Pattern     Category
+
+[STATUS]
+;ID        Status/Setting
+
+[PATTERNS]
+;ID        Multipliers
+ 1         0.75 0.70 0.68 0.65 0.65 0.70
+ 1         0.85 1.00 1.10 1.15 1.20 1.15
+ 1         1.10 1.05 1.00 0.95 1.00 1.10
+ 1         1.20 1.25 1.20 1.10 0.95 0.85
+
+[OPTIONS]
+ UNITS                  LPS
+ HEADLOSS               H-W
+ QUALITY                NONE
+ DEMAND MODEL           PDA
+ MINIMUM PRESSURE       0
+ REQUIRED PRESSURE      20
+ PRESSURE EXPONENT      0.5
+ TRIALS                 40
+ ACCURACY               0.001
+
+[TIMES]
+ DURATION               24:00
+ HYDRAULIC TIMESTEP     1:00
+ QUALITY TIMESTEP       0:05
+ PATTERN TIMESTEP       1:00
+ PATTERN START          0:00
+ REPORT TIMESTEP        1:00
+ REPORT START           0:00
+ START CLOCKTIME        12 AM
+ STATISTIC              NONE
+
+[REPORT]
+ STATUS                 NO
+ SUMMARY                YES
+ PAGE                   0
+
+[COORDINATES]
+;Node       X-Coord     Y-Coord
+ R1          0           100
+ J1          200         100
+ J2          400         200
+ J3          600         100
+ J4          400         0
+
+[VERTICES]
+;Link       X-Coord     Y-Coord
+
+[END]
+

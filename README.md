@@ -41,6 +41,22 @@ uvicorn app.main:app --reload
 
 Kiểm tra API tại `http://localhost:8000/api/health` và tài liệu Swagger tại `http://localhost:8000/docs`.
 
+## Chạy mô phỏng đầu tiên
+
+Từ thư mục gốc của dự án, kiểm tra metadata mạng demo.
+
+```bash
+python -m simulation.cli inspect
+```
+
+Sau khi cài WNTR, chạy mô phỏng PDD trong trạng thái bình thường.
+
+```bash
+python -m simulation.cli baseline
+```
+
+Kết quả JSON được tạo tại `simulation/outputs/baseline.json`.
+
 ## Chạy frontend
 
 ```bash
