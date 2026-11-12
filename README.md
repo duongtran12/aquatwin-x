@@ -66,6 +66,14 @@ python -m simulation.cli recovery
 
 Kết quả phục hồi được tạo tại `simulation/outputs/recovery.json`.
 
+Tìm phương án tốt nhất bằng cách đánh giá toàn bộ tổ hợp có tối đa hai thao tác.
+
+```bash
+python -m optimization.cli exhaustive
+```
+
+Kết quả xếp hạng được tạo tại `optimization/outputs/exhaustive.json`.
+
 ## Chạy frontend
 
 ```bash

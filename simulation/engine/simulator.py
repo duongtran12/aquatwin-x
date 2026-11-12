@@ -313,93 +313,111 @@ def _apply_recovery_actions(
     return applied_actions
 
 
+class RecoveryEvaluator:
+    def __init__(
+        self,
+        network_path: str | Path,
+        scenario: LeakScenario,
+        registry: ValveRegistry,
+    ) -> None:
+        self.path = Path(network_path).resolve()
+        self.source = inspect_inp(self.path)
+        self.scenario = scenario
+        self.registry = registry
+        if registry.network_name != self.source.name:
+            raise ValueError("Danh sách van không thuộc mạng đang mô phỏng")
+
+        self.wntr = _load_wntr()
+        self.baseline_network = _new_pdd_network(self.wntr, self.path)
+        self.baseline_results = self.wntr.sim.WNTRSimulator(
+            self.baseline_network
+        ).run_sim()
+
+        failure_network = _new_pdd_network(self.wntr, self.path)
+        failure_network, failure_leak_node = _add_pipe_leak(
+            failure_network,
+            self.wntr,
+            scenario,
+        )
+        failure_results = self.wntr.sim.WNTRSimulator(failure_network).run_sim()
+        self.failure_steps = _build_impact_steps(
+            self.baseline_network,
+            self.baseline_results,
+            failure_network,
+            failure_results,
+            failure_leak_node,
+            scenario,
+        )
+        self.failure_summary = summarize_failure_steps(self.failure_steps)
+
+    def evaluate(
+        self,
+        actions: list[RecoveryAction],
+        include_time_steps: bool = True,
+    ) -> dict[str, Any]:
+        recovery_network = _new_pdd_network(self.wntr, self.path)
+        recovery_network, recovery_leak_node = _add_pipe_leak(
+            recovery_network,
+            self.wntr,
+            self.scenario,
+        )
+        applied_actions = _apply_recovery_actions(
+            recovery_network,
+            self.registry,
+            actions,
+            self.scenario.pipe_id,
+        )
+        recovery_results = self.wntr.sim.WNTRSimulator(recovery_network).run_sim()
+        recovery_steps = _build_impact_steps(
+            self.baseline_network,
+            self.baseline_results,
+            recovery_network,
+            recovery_results,
+            recovery_leak_node,
+            self.scenario,
+        )
+
+        recovery_summary = summarize_failure_steps(recovery_steps)
+        topology = analyze_connectivity(self.path, self.registry, actions)
+        result = {
+            "scenario": "manual_recovery",
+            "configuration": self.scenario.to_dict(),
+            "network": self.source.to_dict(),
+            "actions": applied_actions,
+            "topology": topology,
+            "failure": {"summary": self.failure_summary},
+            "recovery": {"summary": recovery_summary},
+            "improvement": {
+                "service_availability_gain": (
+                    recovery_summary["minimum_service_availability"]
+                    - self.failure_summary["minimum_service_availability"]
+                ),
+                "pressure_violations_reduced": (
+                    self.failure_summary["maximum_pressure_violations"]
+                    - recovery_summary["maximum_pressure_violations"]
+                ),
+                "affected_nodes_reduced": (
+                    self.failure_summary["maximum_affected_nodes"]
+                    - recovery_summary["maximum_affected_nodes"]
+                ),
+                "leakage_volume_reduced": (
+                    self.failure_summary["total_leakage_volume"]
+                    - recovery_summary["total_leakage_volume"]
+                ),
+            },
+        }
+        if include_time_steps:
+            result["failure"]["time_steps"] = self.failure_steps
+            result["recovery"]["time_steps"] = recovery_steps
+        return result
+
+
 def run_manual_recovery(
     network_path: str | Path,
     scenario: LeakScenario,
     registry: ValveRegistry,
     actions: list[RecoveryAction],
 ) -> dict[str, Any]:
-    path = Path(network_path).resolve()
-    source = inspect_inp(path)
-    if registry.network_name != source.name:
-        raise ValueError("Danh sách van không thuộc mạng đang mô phỏng")
-
-    wntr = _load_wntr()
-    baseline_network = _new_pdd_network(wntr, path)
-    baseline_results = wntr.sim.WNTRSimulator(baseline_network).run_sim()
-
-    failure_network = _new_pdd_network(wntr, path)
-    failure_network, failure_leak_node = _add_pipe_leak(
-        failure_network,
-        wntr,
-        scenario,
-    )
-    failure_results = wntr.sim.WNTRSimulator(failure_network).run_sim()
-    failure_steps = _build_impact_steps(
-        baseline_network,
-        baseline_results,
-        failure_network,
-        failure_results,
-        failure_leak_node,
-        scenario,
-    )
-
-    recovery_network = _new_pdd_network(wntr, path)
-    recovery_network, recovery_leak_node = _add_pipe_leak(
-        recovery_network,
-        wntr,
-        scenario,
-    )
-    applied_actions = _apply_recovery_actions(
-        recovery_network,
-        registry,
-        actions,
-        scenario.pipe_id,
-    )
-    recovery_results = wntr.sim.WNTRSimulator(recovery_network).run_sim()
-    recovery_steps = _build_impact_steps(
-        baseline_network,
-        baseline_results,
-        recovery_network,
-        recovery_results,
-        recovery_leak_node,
-        scenario,
-    )
-
-    failure_summary = summarize_failure_steps(failure_steps)
-    recovery_summary = summarize_failure_steps(recovery_steps)
-    topology = analyze_connectivity(path, registry, actions)
-    return {
-        "scenario": "manual_recovery",
-        "configuration": scenario.to_dict(),
-        "network": source.to_dict(),
-        "actions": applied_actions,
-        "topology": topology,
-        "failure": {
-            "summary": failure_summary,
-            "time_steps": failure_steps,
-        },
-        "recovery": {
-            "summary": recovery_summary,
-            "time_steps": recovery_steps,
-        },
-        "improvement": {
-            "service_availability_gain": (
-                recovery_summary["minimum_service_availability"]
-                - failure_summary["minimum_service_availability"]
-            ),
-            "pressure_violations_reduced": (
-                failure_summary["maximum_pressure_violations"]
-                - recovery_summary["maximum_pressure_violations"]
-            ),
-            "affected_nodes_reduced": (
-                failure_summary["maximum_affected_nodes"]
-                - recovery_summary["maximum_affected_nodes"]
-            ),
-            "leakage_volume_reduced": (
-                failure_summary["total_leakage_volume"]
-                - recovery_summary["total_leakage_volume"]
-            ),
-        },
-    }
+    evaluator = RecoveryEvaluator(network_path, scenario, registry)
+    return evaluator.evaluate(actions)
 

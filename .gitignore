@@ -24,4 +24,6 @@ simulation/outputs/*
 !simulation/outputs/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+optimization/outputs/*
+!optimization/outputs/.gitkeep
 
