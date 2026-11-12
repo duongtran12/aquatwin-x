@@ -74,6 +74,13 @@ python -m optimization.cli exhaustive
 
 Kết quả xếp hạng được tạo tại `optimization/outputs/exhaustive.json`.
 
+Chạy Genetic Algorithm và so sánh với exhaustive search.
+
+```bash
+python -m optimization.cli ga
+python -m optimization.cli compare
+```
+
 ## Chạy frontend
 
 ```bash

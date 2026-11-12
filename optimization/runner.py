@@ -13,7 +13,7 @@ from simulation.engine import (
 from simulation.engine.valves import RecoveryAction
 
 
-def _evaluate_candidate(
+def evaluate_candidate(
     evaluator: RecoveryEvaluator,
     actions: list[RecoveryAction],
     node_count: int,
@@ -59,11 +59,12 @@ def run_exhaustive_search(
     if top_k <= 0:
         raise ValueError("top_k phải lớn hơn 0")
 
+    search_started_at = perf_counter()
     objective_weights = weights or ObjectiveWeights()
     evaluator = RecoveryEvaluator(network_path, scenario, registry)
     candidates = generate_closure_candidates(registry, max_actions)
     evaluations = [
-        _evaluate_candidate(
+        evaluate_candidate(
             evaluator,
             actions,
             evaluator.source.junctions,
@@ -98,6 +99,7 @@ def run_exhaustive_search(
         "candidate_count": len(candidates),
         "feasible_count": len(feasible),
         "failed_count": len(evaluations) - len(feasible),
+        "computation_time_seconds": perf_counter() - search_started_at,
         "failure_summary": evaluator.failure_summary,
         "isolation_baseline": baseline,
         "best_candidate": feasible[0] if feasible else None,
