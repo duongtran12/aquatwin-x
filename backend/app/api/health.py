@@ -1,0 +1,13 @@
+from fastapi import APIRouter
+
+
+router = APIRouter(tags=["System"])
+
+
+@router.get("/health")
+def health_check() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": "aquatwin-x-api",
+    }
+
