@@ -42,3 +42,21 @@ python -m simulation.cli failure --scenario simulation/scenarios/my_leak.json
 
 Kết quả `simulation/outputs/failure.json` gồm mức phục vụ, số nút vi phạm áp suất, số nút bị ảnh hưởng, lưu lượng rò và tổng thể tích thất thoát.
 
+## Thử phương án phục hồi thủ công
+
+Mạng demo sử dụng một lớp dữ liệu riêng để mô tả vị trí van cô lập tại hai đầu mỗi đường ống. Kịch bản mẫu đóng hai van ở hai đầu `P3` để cô lập điểm rò, trong khi các đường ống còn lại duy trì tuyến cấp thay thế tới `J3`.
+
+Kiểm tra kết nối tới nguồn trước khi chạy mô phỏng thủy lực.
+
+```bash
+python -m simulation.cli topology
+```
+
+Chạy ba trạng thái bình thường, xảy ra rò rỉ và phục hồi thủ công.
+
+```bash
+python -m simulation.cli recovery
+```
+
+Kết quả được ghi tại `simulation/outputs/recovery.json`, gồm danh sách thao tác thực tế, KPI trước và sau phục hồi cùng mức cải thiện.
+

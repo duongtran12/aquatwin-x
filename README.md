@@ -57,6 +57,15 @@ python -m simulation.cli baseline
 
 Kết quả JSON được tạo tại `simulation/outputs/baseline.json`.
 
+Kiểm tra phương án đóng van và chạy phục hồi thủ công.
+
+```bash
+python -m simulation.cli topology
+python -m simulation.cli recovery
+```
+
+Kết quả phục hồi được tạo tại `simulation/outputs/recovery.json`.
+
 ## Chạy frontend
 
 ```bash

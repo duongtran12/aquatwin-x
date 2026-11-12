@@ -1,0 +1,6 @@
+{
+  "actions": [
+    {"valve_id": "V_P3_START", "status": "CLOSED"},
+    {"valve_id": "V_P3_END", "status": "CLOSED"}
+  ]
+}

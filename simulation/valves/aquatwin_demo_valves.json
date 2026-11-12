@@ -1,0 +1,17 @@
+{
+  "network": "aquatwin_demo",
+  "valves": [
+    {"valve_id": "V_P1_START", "link_id": "P1", "endpoint": "start"},
+    {"valve_id": "V_P1_END", "link_id": "P1", "endpoint": "end"},
+    {"valve_id": "V_P2_START", "link_id": "P2", "endpoint": "start"},
+    {"valve_id": "V_P2_END", "link_id": "P2", "endpoint": "end"},
+    {"valve_id": "V_P3_START", "link_id": "P3", "endpoint": "start"},
+    {"valve_id": "V_P3_END", "link_id": "P3", "endpoint": "end"},
+    {"valve_id": "V_P4_START", "link_id": "P4", "endpoint": "start"},
+    {"valve_id": "V_P4_END", "link_id": "P4", "endpoint": "end"},
+    {"valve_id": "V_P5_START", "link_id": "P5", "endpoint": "start"},
+    {"valve_id": "V_P5_END", "link_id": "P5", "endpoint": "end"},
+    {"valve_id": "V_P6_START", "link_id": "P6", "endpoint": "start"},
+    {"valve_id": "V_P6_END", "link_id": "P6", "endpoint": "end"}
+  ]
+}
