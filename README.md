@@ -32,11 +32,10 @@ aquatwin-x/
 ## Chạy backend
 
 ```bash
-cd backend
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+pip install -r backend/requirements.txt
+uvicorn backend.app.main:app --reload
 ```
 
 Kiểm tra API tại `http://localhost:8000/api/health` và tài liệu Swagger tại `http://localhost:8000/docs`.

@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 
 NETWORK_SECTIONS = {
@@ -69,4 +70,81 @@ def inspect_inp(network_path: str | Path) -> InpSummary:
         title=" ".join(title_lines),
         **counts,
     )
+
+
+def read_inp_elements(network_path: str | Path) -> dict[str, list[dict[str, Any]]]:
+    path = Path(network_path).resolve()
+    inspect_inp(path)
+    sections: dict[str, list[list[str]]] = {}
+    current_section = ""
+
+    for raw_line in path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw_line.split(";", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current_section = line[1:-1].upper()
+            sections.setdefault(current_section, [])
+            continue
+        sections.setdefault(current_section, []).append(line.split())
+
+    coordinates = {
+        fields[0]: (float(fields[1]), float(fields[2]))
+        for fields in sections.get("COORDINATES", [])
+        if len(fields) >= 3
+    }
+    nodes: list[dict[str, Any]] = []
+    for fields in sections.get("JUNCTIONS", []):
+        x, y = coordinates.get(fields[0], (0.0, 0.0))
+        nodes.append(
+            {
+                "id": fields[0],
+                "type": "junction",
+                "x": x,
+                "y": y,
+                "elevation": float(fields[1]),
+                "base_demand": float(fields[2]) if len(fields) >= 3 else 0.0,
+            }
+        )
+    for section, node_type, value_name in (
+        ("RESERVOIRS", "reservoir", "base_head"),
+        ("TANKS", "tank", "elevation"),
+    ):
+        for fields in sections.get(section, []):
+            x, y = coordinates.get(fields[0], (0.0, 0.0))
+            nodes.append(
+                {
+                    "id": fields[0],
+                    "type": node_type,
+                    "x": x,
+                    "y": y,
+                    value_name: float(fields[1]),
+                }
+            )
+
+    links: list[dict[str, Any]] = []
+    for fields in sections.get("PIPES", []):
+        links.append(
+            {
+                "id": fields[0],
+                "type": "pipe",
+                "source": fields[1],
+                "target": fields[2],
+                "length": float(fields[3]),
+                "diameter": float(fields[4]),
+                "roughness": float(fields[5]),
+                "status": fields[7].upper() if len(fields) >= 8 else "OPEN",
+            }
+        )
+    for section, link_type in (("PUMPS", "pump"), ("VALVES", "valve")):
+        for fields in sections.get(section, []):
+            links.append(
+                {
+                    "id": fields[0],
+                    "type": link_type,
+                    "source": fields[1],
+                    "target": fields[2],
+                }
+            )
+    return {"nodes": nodes, "links": links}
 

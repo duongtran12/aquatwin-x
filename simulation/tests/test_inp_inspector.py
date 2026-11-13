@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from simulation.engine.inp_inspector import inspect_inp
+from simulation.engine.inp_inspector import inspect_inp, read_inp_elements
 
 
 NETWORK_PATH = (
@@ -23,6 +23,14 @@ class InpInspectorTests(unittest.TestCase):
     def test_rejects_non_inp_file(self) -> None:
         with self.assertRaises(ValueError):
             inspect_inp(Path(__file__))
+
+    def test_reads_network_elements(self) -> None:
+        elements = read_inp_elements(NETWORK_PATH)
+
+        self.assertEqual(len(elements["nodes"]), 5)
+        self.assertEqual(len(elements["links"]), 6)
+        self.assertEqual(elements["nodes"][0]["id"], "J1")
+        self.assertEqual(elements["links"][0]["source"], "R1")
 
 
 if __name__ == "__main__":

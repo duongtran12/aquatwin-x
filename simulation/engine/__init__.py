@@ -1,4 +1,4 @@
-from simulation.engine.inp_inspector import inspect_inp
+from simulation.engine.inp_inspector import inspect_inp, read_inp_elements
 from simulation.engine.scenario import LeakScenario, load_leak_scenario
 from simulation.engine.simulator import (
     RecoveryEvaluator,
@@ -21,6 +21,7 @@ __all__ = [
     "ValveRegistry",
     "analyze_connectivity",
     "inspect_inp",
+    "read_inp_elements",
     "load_leak_scenario",
     "load_recovery_actions",
     "load_valve_registry",

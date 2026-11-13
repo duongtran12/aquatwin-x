@@ -14,6 +14,13 @@ class IsolationValve:
     link_id: str
     endpoint: ValveEndpoint
 
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "valve_id": self.valve_id,
+            "link_id": self.link_id,
+            "endpoint": self.endpoint,
+        }
+
 
 @dataclass(frozen=True)
 class RecoveryAction:
