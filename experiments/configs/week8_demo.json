@@ -1,0 +1,16 @@
+{
+  "network_path": "../../simulation/networks/aquatwin_demo.inp",
+  "valve_path": "../../simulation/valves/aquatwin_demo_valves.json",
+  "pipe_ids": ["P1", "P2", "P3", "P4", "P5", "P6"],
+  "leak_areas": [0.0003, 0.0007],
+  "seeds": [7, 42, 101],
+  "start_time": 7200,
+  "end_time": 43200,
+  "split_position": 0.5,
+  "discharge_coefficient": 0.75,
+  "pressure_drop_threshold": 2.0,
+  "population_size": 20,
+  "generations": 20,
+  "max_actions": 2,
+  "top_k": 5
+}
