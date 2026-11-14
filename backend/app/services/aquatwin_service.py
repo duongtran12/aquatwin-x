@@ -4,11 +4,14 @@ from typing import Any, Callable
 
 from backend.app.schemas.requests import (
     BaselineSimulationRequest,
+    BatchExperimentRequest,
     FailureSimulationRequest,
     ManualRecoveryRequest,
     OptimizationRequest,
 )
 from backend.app.services.history import RunHistoryStore
+from experiments.benchmark import BenchmarkConfig, run_benchmark, write_results
+from optimization.genetic import GeneticConfig
 from optimization.ga_runner import run_genetic_search
 from optimization.runner import run_exhaustive_search
 from simulation.engine import (
@@ -246,4 +249,99 @@ class AquaTwinService:
             scenario.pipe_id,
             result,
         )
+
+    def run_batch_experiment(
+        self,
+        request: BatchExperimentRequest,
+        output_dir: str | Path,
+        progress_callback: Callable[[int, int, str], None] | None = None,
+    ) -> dict[str, Any]:
+        network_path = self._network_path(request.network_id)
+        valve_path = VALVE_DIR / f"{request.network_id}_valves.json"
+        self._valve_registry(request.network_id)
+        pipe_ids = {
+            link["id"]
+            for link in read_inp_elements(network_path)["links"]
+            if link["type"] == "pipe"
+        }
+        missing = sorted(set(request.pipe_ids) - pipe_ids)
+        if missing:
+            raise ValueError(f"Unknown pipe IDs: {', '.join(missing)}")
+
+        config = BenchmarkConfig(
+            network_path=network_path,
+            valve_path=valve_path,
+            pipe_ids=tuple(request.pipe_ids),
+            leak_areas=tuple(request.leak_areas),
+            seeds=tuple(request.seeds),
+            start_time=request.start_time,
+            end_time=request.end_time,
+            population_size=request.population_size,
+            generations=request.generations,
+            max_actions=request.max_actions,
+            top_k=request.top_k,
+        )
+        runtime = self.runtime_status()
+        if runtime["effective_mode"] == "unavailable":
+            raise RuntimeError(runtime["error"] or "WNTR runtime is unavailable")
+
+        selected_exhaustive_runner = run_exhaustive_search
+        selected_ga_runner = run_genetic_search
+        if runtime["effective_mode"] == "demo":
+            def demo_exhaustive_runner(
+                path: Path,
+                scenario: Any,
+                valve_registry: Any,
+                max_actions: int,
+                top_k: int,
+            ) -> dict[str, Any]:
+                return run_demo_optimization(
+                    path,
+                    scenario,
+                    valve_registry,
+                    algorithm="exhaustive",
+                    max_actions=max_actions,
+                    top_k=top_k,
+                )
+
+            def demo_ga_runner(
+                path: Path,
+                scenario: Any,
+                valve_registry: Any,
+                config: GeneticConfig,
+                top_k: int,
+            ) -> dict[str, Any]:
+                return run_demo_optimization(
+                    path,
+                    scenario,
+                    valve_registry,
+                    algorithm="ga",
+                    generations=config.generations,
+                    seed=config.seed,
+                    max_actions=config.max_actions,
+                    top_k=top_k,
+                )
+
+            selected_exhaustive_runner = demo_exhaustive_runner
+            selected_ga_runner = demo_ga_runner
+
+        result = run_benchmark(
+            config,
+            output_dir,
+            exhaustive_runner=selected_exhaustive_runner,
+            ga_runner=selected_ga_runner,
+            progress_callback=progress_callback,
+        )
+        result["runtime"] = {
+            "mode": runtime["effective_mode"],
+            "synthetic_data": runtime["effective_mode"] == "demo",
+            "warning": DEMO_WARNING if runtime["effective_mode"] == "demo" else None,
+        }
+        result["configuration"]["network_id"] = request.network_id
+        result.pop("output_files", None)
+        for row in result["runs"]:
+            row["runtime_mode"] = runtime["effective_mode"]
+        json_path, csv_path = write_results(result, output_dir)
+        result["output_files"] = {"json": str(json_path), "csv": str(csv_path)}
+        return result
 

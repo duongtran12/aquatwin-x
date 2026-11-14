@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, historyDownloadUrl, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import BatchExperiment from "./components/BatchExperiment";
 import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
 import HistoryDetail from "./components/HistoryDetail";
@@ -7,11 +8,13 @@ import KpiCard from "./components/KpiCard";
 import MetricComparison from "./components/MetricComparison";
 import NetworkMap from "./components/NetworkMap";
 
-const NETWORK_ID = "aquatwin_demo";
+const DEFAULT_NETWORK_ID = "aquatwin_demo";
 const fixed = (value, digits = 2) => Number(value || 0).toFixed(digits);
 const RUN_LABELS = { failure: "Failure", manual_recovery: "Manual recovery", optimization: "AI recovery" };
 
 function App() {
+  const [networks, setNetworks] = useState([]);
+  const [networkId, setNetworkId] = useState(DEFAULT_NETWORK_ID);
   const [network, setNetwork] = useState(null);
   const [selectedPipe, setSelectedPipe] = useState("P3");
   const [selectedValves, setSelectedValves] = useState([]);
@@ -59,9 +62,17 @@ function App() {
   }, [analyticsMode]);
 
   useEffect(() => {
-    getNetwork(NETWORK_ID).then(setNetwork).catch((requestError) => setError(requestError.message));
+    getNetworks().then(setNetworks).catch((requestError) => setError(requestError.message));
     refreshHistory();
   }, [refreshHistory]);
+
+  useEffect(() => {
+    setNetwork(null);
+    setFailureResult(null);
+    setManualResult(null);
+    setOptimizationResult(null);
+    getNetwork(networkId).then(setNetwork).catch((requestError) => setError(requestError.message));
+  }, [networkId]);
 
   useEffect(() => {
     refreshAnalytics();
@@ -69,6 +80,8 @@ function App() {
 
   useEffect(() => {
     if (!network) return;
+    const pipes = network.elements.links.filter((link) => link.type === "pipe");
+    if (!pipes.some((pipe) => pipe.id === selectedPipe)) setSelectedPipe(pipes[0]?.id || "");
     setSelectedValves(network.valves.filter((valve) => valve.link_id === selectedPipe).map((valve) => valve.valve_id));
   }, [network, selectedPipe]);
 
@@ -104,7 +117,7 @@ function App() {
   };
 
   const runFailure = () => execute("failure", async () => {
-    setFailureResult(await simulateFailure(NETWORK_ID, scenarioPayload()));
+    setFailureResult(await simulateFailure(networkId, scenarioPayload()));
     setManualResult(null);
     setOptimizationResult(null);
     await Promise.all([refreshHistory(), refreshAnalytics()]);
@@ -112,7 +125,7 @@ function App() {
 
   const runManualRecovery = () => execute("manual", async () => {
     setManualResult(await simulateWhatIf(
-      NETWORK_ID,
+      networkId,
       scenarioPayload(),
       selectedValves.map((valveId) => ({ valve_id: valveId, status: "CLOSED" })),
     ));
@@ -122,7 +135,7 @@ function App() {
 
   const runAiRecovery = () => execute("optimization", async () => {
     setJobStatus("queued");
-    const job = await startOptimization(NETWORK_ID, scenarioPayload());
+    const job = await startOptimization(networkId, scenarioPayload());
     setOptimizationResult(await waitForOptimization(job.job_id, setJobStatus));
     setManualResult(null);
     setJobStatus("completed");
@@ -158,6 +171,7 @@ function App() {
   const nodeCount = (network?.network?.junctions || 0) + (network?.network?.reservoirs || 0);
   const runtime = network?.runtime;
   const demoMode = runtime?.effective_mode === "demo";
+  const pipeLinks = useMemo(() => (network?.elements?.links || []).filter((link) => link.type === "pipe"), [network]);
 
   const toggleValve = (valveId) => setSelectedValves((current) => (
     current.includes(valveId) ? current.filter((item) => item !== valveId) : [...current, valveId]
@@ -173,7 +187,8 @@ function App() {
           <a className="nav-link" href="#impact"><span>03</span>Impact</a>
           <a className="nav-link" href="#recovery"><span>04</span>Recovery</a>
           <a className="nav-link" href="#analytics"><span>05</span>Analytics</a>
-          <a className="nav-link" href="#history"><span>06</span>History</a>
+          <a className="nav-link" href="#experiments"><span>06</span>Experiments</a>
+          <a className="nav-link" href="#history"><span>07</span>History</a>
         </nav>
         <div className={demoMode ? "sidebar-note sidebar-note--demo" : "sidebar-note"}><span className="status-dot" /><div><strong>{demoMode ? "Demo twin active" : "Digital twin online"}</strong><small>{demoMode ? "Synthetic preview data" : "WNTR / PDD model"}</small></div></div>
       </aside>
@@ -181,7 +196,7 @@ function App() {
       <main className="dashboard">
         <header className="topbar" id="overview">
           <div><p className="eyebrow">WATER NETWORK OPERATIONS</p><h1>Resilience control room</h1></div>
-          <div className="network-badge"><span>Active network · {runtime?.effective_mode || "loading"}</span><strong>{network?.network?.name || "Loading..."}</strong></div>
+          <label className="network-badge"><span>Active network · {runtime?.effective_mode || "loading"}</span><select value={networkId} onChange={(event) => setNetworkId(event.target.value)}>{networks.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
         </header>
         {demoMode && <div className="runtime-notice"><strong>DEMO MODE</strong><span>Synthetic preview data is active because WNTR is blocked. These values must not be used in the experimental report.</span></div>}
         {error && <div className="alert"><strong>Request failed</strong><span>{error}</span></div>}
@@ -199,7 +214,7 @@ function App() {
           <article className="panel scenario-panel" id="scenario">
             <div className="panel-heading"><div><p className="section-label">SCENARIO BUILDER</p><h2>Pipe leak</h2></div><span className="incident-pill">Selected: {selectedPipe}</span></div>
             <label className="field-label" htmlFor="pipe">Failure pipe</label>
-            <select id="pipe" value={selectedPipe} onChange={(event) => setSelectedPipe(event.target.value)}>{(network?.elements?.links || []).map((link) => <option key={link.id}>{link.id}</option>)}</select>
+            <select id="pipe" value={selectedPipe} onChange={(event) => setSelectedPipe(event.target.value)}>{pipeLinks.map((link) => <option key={link.id}>{link.id}</option>)}</select>
             <label className="field-label" htmlFor="area">Leak area (m²)</label>
             <input id="area" type="number" min="0.0001" step="0.0001" aria-invalid={Number(scenario.leakArea) <= 0} value={scenario.leakArea} onChange={(event) => setScenario({ ...scenario, leakArea: event.target.value })} />
             <div className="two-fields">
@@ -254,6 +269,8 @@ function App() {
         </section>
 
         <ExperimentAnalytics analytics={analytics} mode={analyticsMode} onModeChange={setAnalyticsMode} loading={analyticsLoading} />
+
+        <BatchExperiment networkId={networkId} pipes={pipeLinks} runtimeMode={runtime?.effective_mode} />
 
         <section className="panel history-panel" id="history">
           <div className="panel-heading">

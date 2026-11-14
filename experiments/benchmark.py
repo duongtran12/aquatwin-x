@@ -13,6 +13,7 @@ from simulation.engine import LeakScenario, load_valve_registry
 
 
 SearchRunner = Callable[..., dict[str, Any]]
+ProgressCallback = Callable[[int, int, str], None]
 
 
 @dataclass(frozen=True)
@@ -170,12 +171,16 @@ def run_benchmark(
     output_dir: str | Path,
     exhaustive_runner: SearchRunner = run_exhaustive_search,
     ga_runner: SearchRunner = run_genetic_search,
+    progress_callback: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     registry = load_valve_registry(config.valve_path)
     rows: list[dict[str, Any]] = []
     scenario_payloads = []
+    scenarios = build_scenarios(config)
+    total_steps = len(scenarios) * (2 + len(config.seeds))
+    completed_steps = 0
 
-    for scenario_id, scenario in build_scenarios(config):
+    for scenario_id, scenario in scenarios:
         exhaustive = exhaustive_runner(
             config.network_path,
             scenario,
@@ -216,6 +221,13 @@ def run_benchmark(
                 exhaustive_score=exhaustive_score,
             )
         )
+        completed_steps += 2
+        if progress_callback:
+            progress_callback(
+                completed_steps,
+                total_steps,
+                f"Completed baseline and exhaustive search for {scenario_id}",
+            )
 
         for seed in config.seeds:
             genetic = ga_runner(
@@ -243,6 +255,13 @@ def run_benchmark(
                     exhaustive_score=exhaustive_score,
                 )
             )
+            completed_steps += 1
+            if progress_callback:
+                progress_callback(
+                    completed_steps,
+                    total_steps,
+                    f"Completed GA seed {seed} for {scenario_id}",
+                )
 
     result = {
         "configuration": {

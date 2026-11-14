@@ -45,3 +45,15 @@ python -m experiments.cli
 ```
 
 Keep the generated JSON as the machine-readable evidence and use the CSV for tables and charts in the report. Do not manually alter either file after a run; change the configuration and rerun instead.
+
+## Extended benchmark network
+
+`aquatwin_benchmark` contains 12 demand junctions, one reservoir, 21 pipes and 42 virtual isolation valves. It provides a larger multi-loop search space than the four-junction demonstration network.
+
+Run its predefined seven-pipe test matrix from the command line:
+
+```powershell
+python -m experiments.cli --config experiments/configs/benchmark_12node.json --output-dir data/benchmark/benchmark_12node
+```
+
+The same batch can be configured in the dashboard under **Batch Experiments**. The API runs it as a background job, exposes progress, and provides immutable JSON and CSV downloads. Results labeled `demo` are synthetic interface checks and must not be cited as hydraulic evidence.

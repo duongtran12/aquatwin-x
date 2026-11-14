@@ -50,3 +50,24 @@ def test_job_manager_records_failure() -> None:
         manager.result(job["job_id"])
     manager.shutdown()
 
+
+def test_job_manager_reports_progress() -> None:
+    manager = JobManager(max_workers=1)
+    completed = Event()
+
+    def task(job_id, report):
+        report(2, 4, "Halfway")
+        completed.set()
+        return {"job_id": job_id}
+
+    job = manager.submit_progress(task, total_steps=4)
+    assert completed.wait(timeout=2)
+    for _ in range(100):
+        current = manager.status(job["job_id"])
+        if current["status"] == "completed":
+            break
+        sleep(0.001)
+    assert current["progress"]["percent"] == 100.0
+    assert manager.result(job["job_id"])["job_id"] == job["job_id"]
+    manager.shutdown()
+

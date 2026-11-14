@@ -1,0 +1,101 @@
+[TITLE]
+AquaTwin-X 12-junction multi-loop benchmark network
+
+[JUNCTIONS]
+;ID   Elevation   Demand   Pattern
+ J1   10          3.2      1
+ J2   12          4.0      1
+ J3   14          3.5      1
+ J4   16          2.8      1
+ J5   9           4.2      1
+ J6   11          5.0      1
+ J7   13          4.5      1
+ J8   15          3.2      1
+ J9   8           2.7      1
+ J10  10          3.8      1
+ J11  12          3.4      1
+ J12  14          2.5      1
+
+[RESERVOIRS]
+;ID   Head   Pattern
+ R1   68
+
+[TANKS]
+;ID   Elevation   InitLevel   MinLevel   MaxLevel   Diameter   MinVol
+
+[PIPES]
+;ID   Node1   Node2   Length   Diameter   Roughness   MinorLoss   Status
+ P1   R1      J1      500      350        125         0           Open
+ P2   J1      J2      450      250        120         0           Open
+ P3   J2      J3      500      250        120         0           Open
+ P4   J3      J4      450      220        118         0           Open
+ P5   J5      J6      420      250        120         0           Open
+ P6   J6      J7      480      250        120         0           Open
+ P7   J7      J8      430      220        118         0           Open
+ P8   J9      J10     400      220        118         0           Open
+ P9   J10     J11     460      220        118         0           Open
+ P10  J11     J12     410      200        115         0           Open
+ P11  J1      J5      380      280        122         0           Open
+ P12  J2      J6      400      250        120         0           Open
+ P13  J3      J7      390      250        120         0           Open
+ P14  J4      J8      410      220        118         0           Open
+ P15  J5      J9      370      250        120         0           Open
+ P16  J6      J10     390      230        118         0           Open
+ P17  J7      J11     380      230        118         0           Open
+ P18  J8      J12     400      200        115         0           Open
+ P19  J2      J5      520      200        115         0           Open
+ P20  J3      J8      540      200        115         0           Open
+ P21  J6      J11     510      200        115         0           Open
+
+[PUMPS]
+;ID   Node1   Node2   Parameters
+
+[VALVES]
+;ID   Node1   Node2   Diameter   Type   Setting   MinorLoss
+
+[PATTERNS]
+;ID   Multipliers
+ 1    0.72 0.68 0.65 0.64 0.68 0.78
+ 1    0.92 1.05 1.15 1.22 1.18 1.10
+ 1    1.02 0.96 0.92 0.95 1.04 1.16
+ 1    1.25 1.28 1.20 1.05 0.88 0.78
+
+[OPTIONS]
+ UNITS                  LPS
+ HEADLOSS               H-W
+ QUALITY                NONE
+ DEMAND MODEL           PDA
+ MINIMUM PRESSURE       0
+ REQUIRED PRESSURE      20
+ PRESSURE EXPONENT      0.5
+ TRIALS                 80
+ ACCURACY               0.001
+
+[TIMES]
+ DURATION               24:00
+ HYDRAULIC TIMESTEP     1:00
+ PATTERN TIMESTEP       1:00
+ REPORT TIMESTEP        1:00
+ START CLOCKTIME        12 AM
+
+[REPORT]
+ STATUS                 NO
+ SUMMARY                YES
+
+[COORDINATES]
+;Node   X-Coord   Y-Coord
+ R1     0         300
+ J1     180       300
+ J2     380       300
+ J3     580       300
+ J4     780       300
+ J5     180       180
+ J6     380       180
+ J7     580       180
+ J8     780       180
+ J9     180       60
+ J10    380       60
+ J11    580       60
+ J12    780       60
+
+[END]

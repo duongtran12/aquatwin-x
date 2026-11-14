@@ -78,3 +78,28 @@ class OptimizationRequest(FailureSimulationRequest):
             seed=self.seed,
         )
 
+
+class BatchExperimentRequest(BaseModel):
+    network_id: str = "aquatwin_demo"
+    pipe_ids: list[str] = Field(min_length=1, max_length=12)
+    leak_areas: list[float] = Field(min_length=1, max_length=5)
+    seeds: list[int] = Field(default=[7, 42, 101], min_length=1, max_length=10)
+    start_time: int = Field(default=7200, ge=0)
+    end_time: int = Field(default=43200, gt=0)
+    population_size: int = Field(default=20, ge=2, le=100)
+    generations: int = Field(default=20, ge=1, le=200)
+    max_actions: int = Field(default=2, ge=0, le=5)
+    top_k: int = Field(default=5, ge=1, le=50)
+
+    @model_validator(mode="after")
+    def validate_batch(self) -> "BatchExperimentRequest":
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be later than start_time")
+        if len(set(self.pipe_ids)) != len(self.pipe_ids):
+            raise ValueError("pipe_ids must not contain duplicates")
+        if len(set(self.seeds)) != len(self.seeds):
+            raise ValueError("seeds must not contain duplicates")
+        if any(area <= 0 for area in self.leak_areas):
+            raise ValueError("leak_areas must be greater than zero")
+        return self
+

@@ -22,6 +22,11 @@ export function getNetwork(networkId = "aquatwin_demo") {
 }
 
 
+export function getNetworks() {
+  return request("/api/networks");
+}
+
+
 export function getHistory(limit = 12) {
   return request(`/api/history?limit=${limit}`);
 }
@@ -93,5 +98,30 @@ export async function waitForOptimization(jobId, onStatus) {
     await new Promise((resolve) => window.setTimeout(resolve, 1000));
   }
   throw new Error("Optimization timed out after 3 minutes");
+}
+
+
+export function startBatchExperiment(payload) {
+  return request("/api/experiments/batch", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+
+export async function waitForBatchExperiment(jobId, onStatus) {
+  for (let attempt = 0; attempt < 720; attempt += 1) {
+    const job = await request(`/api/jobs/${jobId}`);
+    onStatus?.(job);
+    if (job.status === "completed") return request(`/api/results/${jobId}`);
+    if (job.status === "failed") throw new Error(job.error || "Batch experiment failed");
+    await new Promise((resolve) => window.setTimeout(resolve, 1000));
+  }
+  throw new Error("Batch experiment timed out after 12 minutes");
+}
+
+
+export function experimentDownloadUrl(jobId, format) {
+  return `${API_URL}/api/experiments/${jobId}/download?format=${format}`;
 }
 

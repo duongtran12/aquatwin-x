@@ -1,5 +1,6 @@
 import math
 from collections import defaultdict, deque
+from math import comb
 from pathlib import Path
 from typing import Any
 
@@ -230,9 +231,10 @@ def _demo_candidate(
     result = run_demo_manual_recovery(network_path, scenario, registry, actions)
     summary = result["recovery"]["summary"]
     failure = result["failure"]["summary"]
+    node_count = max(1, inspect_inp(network_path).junctions)
     service = float(summary["minimum_service_availability"])
-    pressure = max(0.0, 1.0 - float(summary["maximum_pressure_violations"]) / 4)
-    affected = max(0.0, 1.0 - float(summary["maximum_affected_nodes"]) / 4)
+    pressure = max(0.0, 1.0 - float(summary["maximum_pressure_violations"]) / node_count)
+    affected = max(0.0, 1.0 - float(summary["maximum_affected_nodes"]) / node_count)
     failure_leakage = max(float(failure["total_leakage_volume"]), 1e-9)
     leakage = max(0.0, 1.0 - float(summary["total_leakage_volume"]) / failure_leakage)
     action_score = 1.0 / (1.0 + len(actions))
@@ -264,12 +266,17 @@ def run_demo_optimization(
     actions = [RecoveryAction(valve.valve_id, "CLOSED") for valve in pipe_valves[:max_actions]]
     best = _demo_candidate(network_path, scenario, registry, actions)
     failure = run_demo_failure(network_path, scenario)["summary"]
+    valve_count = len(registry.valves)
+    candidate_count = sum(
+        comb(valve_count, count)
+        for count in range(min(max_actions, valve_count) + 1)
+    )
     if algorithm == "exhaustive":
         return {
             "algorithm": "demo_exhaustive_search",
             "scenario": scenario.to_dict(),
-            "candidate_count": 79,
-            "feasible_count": 79,
+            "candidate_count": candidate_count,
+            "feasible_count": candidate_count,
             "failed_count": 0,
             "computation_time_seconds": 0.01,
             "failure_summary": failure,

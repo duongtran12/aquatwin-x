@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.app.api.health import router as health_router
+from backend.app.api.experiments import router as experiments_router
 from backend.app.api.history import router as history_router
 from backend.app.api.networks import router as networks_router
 from backend.app.api.recovery import router as recovery_router
@@ -24,6 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router, prefix="/api")
+app.include_router(experiments_router, prefix="/api")
 app.include_router(history_router, prefix="/api")
 app.include_router(networks_router, prefix="/api")
 app.include_router(simulations_router, prefix="/api")
