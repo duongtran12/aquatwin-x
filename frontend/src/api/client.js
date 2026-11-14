@@ -8,7 +8,10 @@ async function request(path, options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.detail || `Request failed with status ${response.status}`);
+    const detail = Array.isArray(payload.detail)
+      ? payload.detail.map((item) => item.msg || String(item)).join("; ")
+      : payload.detail;
+    throw new Error(detail || `Request failed with status ${response.status}`);
   }
   return payload;
 }
@@ -21,6 +24,11 @@ export function getNetwork(networkId = "aquatwin_demo") {
 
 export function getHistory(limit = 12) {
   return request(`/api/history?limit=${limit}`);
+}
+
+
+export function getHistoryItem(runId) {
+  return request(`/api/history/${runId}`);
 }
 
 

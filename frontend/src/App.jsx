@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getHistory, getNetwork, historyDownloadUrl, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { getHistory, getHistoryItem, getNetwork, historyDownloadUrl, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import FitnessChart from "./components/FitnessChart";
+import HistoryDetail from "./components/HistoryDetail";
 import KpiCard from "./components/KpiCard";
 import MetricComparison from "./components/MetricComparison";
 import NetworkMap from "./components/NetworkMap";
@@ -18,9 +19,25 @@ function App() {
   const [manualResult, setManualResult] = useState(null);
   const [optimizationResult, setOptimizationResult] = useState(null);
   const [history, setHistory] = useState([]);
+  const [selectedHistory, setSelectedHistory] = useState(null);
+  const [historyBusy, setHistoryBusy] = useState("");
   const [busy, setBusy] = useState("");
   const [jobStatus, setJobStatus] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const scenarioErrors = useMemo(() => {
+    const errors = [];
+    const leakArea = Number(scenario.leakArea);
+    const startHour = Number(scenario.startHour);
+    const endHour = Number(scenario.endHour);
+    if (!Number.isFinite(leakArea) || leakArea <= 0) errors.push("Leak area must be greater than zero.");
+    if (!Number.isInteger(startHour) || startHour < 0 || startHour > 23) errors.push("Start hour must be from 0 to 23.");
+    if (!Number.isInteger(endHour) || endHour < 1 || endHour > 24) errors.push("End hour must be from 1 to 24.");
+    if (Number.isFinite(startHour) && Number.isFinite(endHour) && endHour <= startHour) errors.push("End hour must be later than start hour.");
+    return errors;
+  }, [scenario]);
+  const scenarioValid = scenarioErrors.length === 0;
 
   const refreshHistory = useCallback(() => (
     getHistory().then(setHistory).catch((requestError) => setError(requestError.message))
@@ -40,6 +57,7 @@ function App() {
     setFailureResult(null);
     setManualResult(null);
     setOptimizationResult(null);
+    setNotice("");
   }, [selectedPipe, scenario.leakArea, scenario.startHour, scenario.endHour]);
 
   const scenarioPayload = useCallback(() => ({
@@ -52,10 +70,18 @@ function App() {
     pressure_drop_threshold: 2,
   }), [scenario, selectedPipe]);
 
-  const execute = async (taskName, action) => {
+  const execute = async (taskName, action, successMessage) => {
     setBusy(taskName);
     setError("");
-    try { await action(); } catch (requestError) { setError(requestError.message); } finally { setBusy(""); }
+    setNotice("");
+    try {
+      await action();
+      setNotice(successMessage);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy("");
+    }
   };
 
   const runFailure = () => execute("failure", async () => {
@@ -63,7 +89,7 @@ function App() {
     setManualResult(null);
     setOptimizationResult(null);
     await refreshHistory();
-  });
+  }, "Failure simulation completed and saved to history.");
 
   const runManualRecovery = () => execute("manual", async () => {
     setManualResult(await simulateWhatIf(
@@ -73,7 +99,7 @@ function App() {
     ));
     setOptimizationResult(null);
     await refreshHistory();
-  });
+  }, "Manual recovery evaluated and saved to history.");
 
   const runAiRecovery = () => execute("optimization", async () => {
     setJobStatus("queued");
@@ -82,7 +108,19 @@ function App() {
     setManualResult(null);
     setJobStatus("completed");
     await refreshHistory();
-  });
+  }, "AI recovery completed and saved to history.");
+
+  const openHistory = async (runId) => {
+    setHistoryBusy(runId);
+    setError("");
+    try {
+      setSelectedHistory(await getHistoryItem(runId));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setHistoryBusy("");
+    }
+  };
 
   const worstStep = useMemo(() => {
     if (!failureResult?.time_steps?.length) return null;
@@ -127,6 +165,7 @@ function App() {
         </header>
         {demoMode && <div className="runtime-notice"><strong>DEMO MODE</strong><span>Synthetic preview data is active because WNTR is blocked. These values must not be used in the experimental report.</span></div>}
         {error && <div className="alert"><strong>Request failed</strong><span>{error}</span></div>}
+        {notice && <div className="success-notice"><strong>COMPLETED</strong><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Dismiss notification">×</button></div>}
 
         <section className="overview-grid">
           <article className="panel map-panel">
@@ -142,13 +181,14 @@ function App() {
             <label className="field-label" htmlFor="pipe">Failure pipe</label>
             <select id="pipe" value={selectedPipe} onChange={(event) => setSelectedPipe(event.target.value)}>{(network?.elements?.links || []).map((link) => <option key={link.id}>{link.id}</option>)}</select>
             <label className="field-label" htmlFor="area">Leak area (m²)</label>
-            <input id="area" type="number" min="0.0001" step="0.0001" value={scenario.leakArea} onChange={(event) => setScenario({ ...scenario, leakArea: event.target.value })} />
+            <input id="area" type="number" min="0.0001" step="0.0001" aria-invalid={Number(scenario.leakArea) <= 0} value={scenario.leakArea} onChange={(event) => setScenario({ ...scenario, leakArea: event.target.value })} />
             <div className="two-fields">
               <div><label className="field-label" htmlFor="start">Start (hour)</label><input id="start" type="number" min="0" max="23" value={scenario.startHour} onChange={(event) => setScenario({ ...scenario, startHour: event.target.value })} /></div>
               <div><label className="field-label" htmlFor="end">End (hour)</label><input id="end" type="number" min="1" max="24" value={scenario.endHour} onChange={(event) => setScenario({ ...scenario, endHour: event.target.value })} /></div>
             </div>
             <div className="scenario-summary"><span>Duration</span><strong>{Math.max(0, Number(scenario.endHour) - Number(scenario.startHour))} hours</strong></div>
-            <button className="primary-button" type="button" disabled={Boolean(busy) || !network} onClick={runFailure}>{busy === "failure" ? "Simulating..." : "Run failure simulation"}</button>
+            {!scenarioValid && <div className="validation-message">{scenarioErrors.map((message) => <span key={message}>{message}</span>)}</div>}
+            <button className="primary-button" type="button" disabled={Boolean(busy) || !network || !scenarioValid} onClick={runFailure}>{busy === "failure" ? "Simulating..." : "Run failure simulation"}</button>
           </article>
         </section>
 
@@ -200,7 +240,7 @@ function App() {
           </div>
           {history.length ? (
             <div className="history-table">
-              <div className="history-row history-row--head"><span>Run</span><span>Pipe</span><span>Mode</span><span>Result</span><span>Created</span><span>Export</span></div>
+              <div className="history-row history-row--head"><span>Run</span><span>Pipe</span><span>Mode</span><span>Result</span><span>Created</span><span>Actions</span></div>
               {history.map((item) => (
                 <div className="history-row" key={item.run_id}>
                   <strong>{RUN_LABELS[item.run_type] || item.run_type}</strong>
@@ -208,13 +248,14 @@ function App() {
                   <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</span>
                   <span>{item.summary.score != null ? `Score ${fixed(item.summary.score, 1)}` : `${item.summary.maximum_affected_nodes ?? 0} affected`}</span>
                   <span>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
-                  <span className="export-links"><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
+                  <span className="export-links"><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : "View"}</button><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
                 </div>
               ))}
             </div>
           ) : <p className="empty-state history-empty">No saved runs yet. Start a failure simulation to create the first record.</p>}
         </section>
       </main>
+      {selectedHistory && <HistoryDetail item={selectedHistory} onClose={() => setSelectedHistory(null)} jsonUrl={historyDownloadUrl(selectedHistory.run_id, "json")} csvUrl={historyDownloadUrl(selectedHistory.run_id, "csv")} />}
     </div>
   );
 }
