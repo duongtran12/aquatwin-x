@@ -20,6 +20,9 @@ dist/
 Thumbs.db
 
 # Generated project data
+data/*.db
+data/*.db-shm
+data/*.db-wal
 simulation/outputs/*
 !simulation/outputs/.gitkeep
 data/processed/*

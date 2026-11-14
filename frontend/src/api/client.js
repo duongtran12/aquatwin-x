@@ -19,6 +19,16 @@ export function getNetwork(networkId = "aquatwin_demo") {
 }
 
 
+export function getHistory(limit = 12) {
+  return request(`/api/history?limit=${limit}`);
+}
+
+
+export function historyDownloadUrl(runId, format) {
+  return `${API_URL}/api/history/${runId}/download?format=${format}`;
+}
+
+
 export function simulateFailure(networkId, scenario) {
   return request("/api/simulations/failure", {
     method: "POST",

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getNetwork, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { getHistory, getNetwork, historyDownloadUrl, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import FitnessChart from "./components/FitnessChart";
 import KpiCard from "./components/KpiCard";
 import MetricComparison from "./components/MetricComparison";
@@ -7,6 +7,7 @@ import NetworkMap from "./components/NetworkMap";
 
 const NETWORK_ID = "aquatwin_demo";
 const fixed = (value, digits = 2) => Number(value || 0).toFixed(digits);
+const RUN_LABELS = { failure: "Failure", manual_recovery: "Manual recovery", optimization: "AI recovery" };
 
 function App() {
   const [network, setNetwork] = useState(null);
@@ -16,13 +17,19 @@ function App() {
   const [failureResult, setFailureResult] = useState(null);
   const [manualResult, setManualResult] = useState(null);
   const [optimizationResult, setOptimizationResult] = useState(null);
+  const [history, setHistory] = useState([]);
   const [busy, setBusy] = useState("");
   const [jobStatus, setJobStatus] = useState("");
   const [error, setError] = useState("");
 
+  const refreshHistory = useCallback(() => (
+    getHistory().then(setHistory).catch((requestError) => setError(requestError.message))
+  ), []);
+
   useEffect(() => {
     getNetwork(NETWORK_ID).then(setNetwork).catch((requestError) => setError(requestError.message));
-  }, []);
+    refreshHistory();
+  }, [refreshHistory]);
 
   useEffect(() => {
     if (!network) return;
@@ -55,6 +62,7 @@ function App() {
     setFailureResult(await simulateFailure(NETWORK_ID, scenarioPayload()));
     setManualResult(null);
     setOptimizationResult(null);
+    await refreshHistory();
   });
 
   const runManualRecovery = () => execute("manual", async () => {
@@ -64,6 +72,7 @@ function App() {
       selectedValves.map((valveId) => ({ valve_id: valveId, status: "CLOSED" })),
     ));
     setOptimizationResult(null);
+    await refreshHistory();
   });
 
   const runAiRecovery = () => execute("optimization", async () => {
@@ -72,6 +81,7 @@ function App() {
     setOptimizationResult(await waitForOptimization(job.job_id, setJobStatus));
     setManualResult(null);
     setJobStatus("completed");
+    await refreshHistory();
   });
 
   const worstStep = useMemo(() => {
@@ -105,6 +115,7 @@ function App() {
           <a className="nav-link" href="#scenario"><span>02</span>Scenario</a>
           <a className="nav-link" href="#impact"><span>03</span>Impact</a>
           <a className="nav-link" href="#recovery"><span>04</span>Recovery</a>
+          <a className="nav-link" href="#history"><span>05</span>History</a>
         </nav>
         <div className={demoMode ? "sidebar-note sidebar-note--demo" : "sidebar-note"}><span className="status-dot" /><div><strong>{demoMode ? "Demo twin active" : "Digital twin online"}</strong><small>{demoMode ? "Synthetic preview data" : "WNTR / PDD model"}</small></div></div>
       </aside>
@@ -180,6 +191,28 @@ function App() {
         <section className="panel decision-panel">
           <div><p className="section-label">RECOMMENDED RESPONSE</p><h2>{bestActions.length ? "Recovery plan ready for review" : "Run a recovery analysis to generate a plan"}</h2><p>{bestActions.length ? "The following control actions produced the current recovery indicators." : "AquaTwin-X keeps recommendations explainable by showing every proposed valve operation and its measured impact."}</p></div>
           <div className="action-list">{bestActions.map((action, index) => <div className="action-item" key={`${action.valve_id}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><strong>{action.status === "CLOSED" ? "Close" : "Open"} {action.valve_id}</strong><small>{action.link_id ? `on ${action.link_id}` : "virtual isolation valve"}</small></div>)}</div>
+        </section>
+
+        <section className="panel history-panel" id="history">
+          <div className="panel-heading">
+            <div><p className="section-label">RUN ARCHIVE</p><h2>Recent simulations</h2></div>
+            <button className="text-button" type="button" onClick={refreshHistory}>Refresh</button>
+          </div>
+          {history.length ? (
+            <div className="history-table">
+              <div className="history-row history-row--head"><span>Run</span><span>Pipe</span><span>Mode</span><span>Result</span><span>Created</span><span>Export</span></div>
+              {history.map((item) => (
+                <div className="history-row" key={item.run_id}>
+                  <strong>{RUN_LABELS[item.run_type] || item.run_type}</strong>
+                  <span>{item.pipe_id || "-"}</span>
+                  <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</span>
+                  <span>{item.summary.score != null ? `Score ${fixed(item.summary.score, 1)}` : `${item.summary.maximum_affected_nodes ?? 0} affected`}</span>
+                  <span>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
+                  <span className="export-links"><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="empty-state history-empty">No saved runs yet. Start a failure simulation to create the first record.</p>}
         </section>
       </main>
     </div>
