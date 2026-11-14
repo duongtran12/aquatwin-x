@@ -89,6 +89,8 @@ function App() {
   const recoverySummary = optimizationResult?.best_candidate?.summary || manualResult?.recovery?.summary;
   const bestActions = optimizationResult?.best_candidate?.actions || manualResult?.actions || [];
   const nodeCount = (network?.network?.junctions || 0) + (network?.network?.reservoirs || 0);
+  const runtime = network?.runtime;
+  const demoMode = runtime?.effective_mode === "demo";
 
   const toggleValve = (valveId) => setSelectedValves((current) => (
     current.includes(valveId) ? current.filter((item) => item !== valveId) : [...current, valveId]
@@ -104,14 +106,15 @@ function App() {
           <a className="nav-link" href="#impact"><span>03</span>Impact</a>
           <a className="nav-link" href="#recovery"><span>04</span>Recovery</a>
         </nav>
-        <div className="sidebar-note"><span className="status-dot" /><div><strong>Digital twin online</strong><small>EPANET / PDD model</small></div></div>
+        <div className={demoMode ? "sidebar-note sidebar-note--demo" : "sidebar-note"}><span className="status-dot" /><div><strong>{demoMode ? "Demo twin active" : "Digital twin online"}</strong><small>{demoMode ? "Synthetic preview data" : "WNTR / PDD model"}</small></div></div>
       </aside>
 
       <main className="dashboard">
         <header className="topbar" id="overview">
           <div><p className="eyebrow">WATER NETWORK OPERATIONS</p><h1>Resilience control room</h1></div>
-          <div className="network-badge"><span>Active network</span><strong>{network?.network?.name || "Loading..."}</strong></div>
+          <div className="network-badge"><span>Active network · {runtime?.effective_mode || "loading"}</span><strong>{network?.network?.name || "Loading..."}</strong></div>
         </header>
+        {demoMode && <div className="runtime-notice"><strong>DEMO MODE</strong><span>Synthetic preview data is active because WNTR is blocked. These values must not be used in the experimental report.</span></div>}
         {error && <div className="alert"><strong>Request failed</strong><span>{error}</span></div>}
 
         <section className="overview-grid">

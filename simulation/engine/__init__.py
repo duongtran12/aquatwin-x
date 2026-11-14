@@ -2,6 +2,7 @@ from simulation.engine.inp_inspector import inspect_inp, read_inp_elements
 from simulation.engine.scenario import LeakScenario, load_leak_scenario
 from simulation.engine.simulator import (
     RecoveryEvaluator,
+    get_wntr_status,
     run_baseline,
     run_failure,
     run_manual_recovery,
@@ -18,6 +19,7 @@ __all__ = [
     "LeakScenario",
     "RecoveryAction",
     "RecoveryEvaluator",
+    "get_wntr_status",
     "ValveRegistry",
     "analyze_connectivity",
     "inspect_inp",

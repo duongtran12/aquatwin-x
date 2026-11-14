@@ -29,6 +29,18 @@ def _load_wntr() -> Any:
     return wntr
 
 
+def get_wntr_status() -> dict[str, Any]:
+    try:
+        wntr = _load_wntr()
+    except RuntimeError as exc:
+        return {"available": False, "version": None, "error": str(exc)}
+    return {
+        "available": True,
+        "version": getattr(wntr, "__version__", "unknown"),
+        "error": None,
+    }
+
+
 def _network_elements(network: Any) -> dict[str, list[dict[str, Any]]]:
     nodes = []
     for node_name, node in network.nodes():
