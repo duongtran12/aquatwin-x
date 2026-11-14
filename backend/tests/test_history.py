@@ -65,3 +65,56 @@ def test_history_api_returns_not_found() -> None:
         response = TestClient(app).get("/api/history/missing")
         app.dependency_overrides.clear()
     assert response.status_code == 404
+
+
+def test_history_analytics_aggregates_recovery_and_runtime_modes() -> None:
+    with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+        store = RunHistoryStore(Path(directory) / "history.db")
+        failure = {
+            "minimum_service_availability": 0.70,
+            "maximum_pressure_violations": 3,
+            "maximum_affected_nodes": 4,
+            "total_leakage_volume": 100.0,
+        }
+        recovery = {
+            "minimum_service_availability": 0.92,
+            "maximum_pressure_violations": 1,
+            "maximum_affected_nodes": 1,
+            "total_leakage_volume": 25.0,
+        }
+        store.save(
+            "manual_recovery",
+            "aquatwin_demo",
+            "P3",
+            "demo",
+            {**recovery, "score": None, "action_count": 2},
+            {"failure": {"summary": failure}, "recovery": {"summary": recovery}},
+        )
+        store.save(
+            "optimization",
+            "aquatwin_demo",
+            "P3",
+            "real",
+            {**recovery, "score": 91.5, "action_count": 2},
+            {"failure_summary": failure, "best_candidate": {"score": 91.5, "summary": recovery}},
+        )
+        analytics = store.analytics()
+        real_only = store.analytics("real")
+    assert analytics["total_runs"] == 2
+    assert analytics["runtime_counts"] == {"demo": 1, "real": 1}
+    assert analytics["optimization"]["best_score"] == 91.5
+    assert analytics["recovery"]["average_leakage_reduction"] == 75.0
+    assert analytics["by_pipe"][0]["runs"] == 2
+    assert real_only["total_runs"] == 1
+
+
+def test_history_analytics_api_supports_runtime_filter() -> None:
+    with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+        store = RunHistoryStore(Path(directory) / "history.db")
+        store.save("failure", "aquatwin_demo", "P2", "demo", {}, sample_result())
+        app.dependency_overrides[get_history_store] = lambda: store
+        response = TestClient(app).get("/api/history/analytics?runtime_mode=demo")
+        app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["filter"]["runtime_mode"] == "demo"
+    assert response.json()["total_runs"] == 1

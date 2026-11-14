@@ -32,6 +32,12 @@ export function getHistoryItem(runId) {
 }
 
 
+export function getHistoryAnalytics(runtimeMode = "all") {
+  const query = runtimeMode === "all" ? "" : `?runtime_mode=${runtimeMode}`;
+  return request(`/api/history/analytics${query}`);
+}
+
+
 export function historyDownloadUrl(runId, format) {
   return `${API_URL}/api/history/${runId}/download?format=${format}`;
 }

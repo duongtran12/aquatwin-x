@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getHistory, getHistoryItem, getNetwork, historyDownloadUrl, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, historyDownloadUrl, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
 import HistoryDetail from "./components/HistoryDetail";
 import KpiCard from "./components/KpiCard";
@@ -19,6 +20,9 @@ function App() {
   const [manualResult, setManualResult] = useState(null);
   const [optimizationResult, setOptimizationResult] = useState(null);
   const [history, setHistory] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsMode, setAnalyticsMode] = useState("all");
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState(null);
   const [historyBusy, setHistoryBusy] = useState("");
   const [busy, setBusy] = useState("");
@@ -43,10 +47,25 @@ function App() {
     getHistory().then(setHistory).catch((requestError) => setError(requestError.message))
   ), []);
 
+  const refreshAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      setAnalytics(await getHistoryAnalytics(analyticsMode));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [analyticsMode]);
+
   useEffect(() => {
     getNetwork(NETWORK_ID).then(setNetwork).catch((requestError) => setError(requestError.message));
     refreshHistory();
   }, [refreshHistory]);
+
+  useEffect(() => {
+    refreshAnalytics();
+  }, [refreshAnalytics]);
 
   useEffect(() => {
     if (!network) return;
@@ -88,7 +107,7 @@ function App() {
     setFailureResult(await simulateFailure(NETWORK_ID, scenarioPayload()));
     setManualResult(null);
     setOptimizationResult(null);
-    await refreshHistory();
+    await Promise.all([refreshHistory(), refreshAnalytics()]);
   }, "Failure simulation completed and saved to history.");
 
   const runManualRecovery = () => execute("manual", async () => {
@@ -98,7 +117,7 @@ function App() {
       selectedValves.map((valveId) => ({ valve_id: valveId, status: "CLOSED" })),
     ));
     setOptimizationResult(null);
-    await refreshHistory();
+    await Promise.all([refreshHistory(), refreshAnalytics()]);
   }, "Manual recovery evaluated and saved to history.");
 
   const runAiRecovery = () => execute("optimization", async () => {
@@ -107,7 +126,7 @@ function App() {
     setOptimizationResult(await waitForOptimization(job.job_id, setJobStatus));
     setManualResult(null);
     setJobStatus("completed");
-    await refreshHistory();
+    await Promise.all([refreshHistory(), refreshAnalytics()]);
   }, "AI recovery completed and saved to history.");
 
   const openHistory = async (runId) => {
@@ -153,7 +172,8 @@ function App() {
           <a className="nav-link" href="#scenario"><span>02</span>Scenario</a>
           <a className="nav-link" href="#impact"><span>03</span>Impact</a>
           <a className="nav-link" href="#recovery"><span>04</span>Recovery</a>
-          <a className="nav-link" href="#history"><span>05</span>History</a>
+          <a className="nav-link" href="#analytics"><span>05</span>Analytics</a>
+          <a className="nav-link" href="#history"><span>06</span>History</a>
         </nav>
         <div className={demoMode ? "sidebar-note sidebar-note--demo" : "sidebar-note"}><span className="status-dot" /><div><strong>{demoMode ? "Demo twin active" : "Digital twin online"}</strong><small>{demoMode ? "Synthetic preview data" : "WNTR / PDD model"}</small></div></div>
       </aside>
@@ -232,6 +252,8 @@ function App() {
           <div><p className="section-label">RECOMMENDED RESPONSE</p><h2>{bestActions.length ? "Recovery plan ready for review" : "Run a recovery analysis to generate a plan"}</h2><p>{bestActions.length ? "The following control actions produced the current recovery indicators." : "AquaTwin-X keeps recommendations explainable by showing every proposed valve operation and its measured impact."}</p></div>
           <div className="action-list">{bestActions.map((action, index) => <div className="action-item" key={`${action.valve_id}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><strong>{action.status === "CLOSED" ? "Close" : "Open"} {action.valve_id}</strong><small>{action.link_id ? `on ${action.link_id}` : "virtual isolation valve"}</small></div>)}</div>
         </section>
+
+        <ExperimentAnalytics analytics={analytics} mode={analyticsMode} onModeChange={setAnalyticsMode} loading={analyticsLoading} />
 
         <section className="panel history-panel" id="history">
           <div className="panel-heading">

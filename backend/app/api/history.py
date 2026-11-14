@@ -21,6 +21,14 @@ def list_history(
     return store.list(limit)
 
 
+@router.get("/analytics")
+def get_history_analytics(
+    runtime_mode: Literal["demo", "real"] | None = None,
+    store: RunHistoryStore = Depends(get_history_store),
+) -> dict[str, Any]:
+    return store.analytics(runtime_mode)
+
+
 @router.get("/{run_id}")
 def get_history_item(
     run_id: str,
