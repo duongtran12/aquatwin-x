@@ -1,0 +1,11 @@
+.git
+.pytest_cache
+**/__pycache__
+**/*.pyc
+backend/.venv
+frontend/node_modules
+frontend/dist
+data/*.db
+data/benchmark/api
+simulation/outputs
+optimization/outputs

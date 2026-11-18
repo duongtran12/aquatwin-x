@@ -90,6 +90,35 @@ npm run dev
 
 Frontend mặc định chạy tại `http://localhost:5173`.
 
+## Chạy sản phẩm bằng Docker
+
+Docker là môi trường khuyến nghị trên Windows khi Application Control chặn native dependency của WNTR. Docker Compose chạy backend trong Linux với `AQUATWIN_RUNTIME_MODE=real`, đồng thời đóng gói frontend bằng Nginx.
+
+```powershell
+docker compose up --build
+```
+
+Sau khi hai service healthy:
+
+- Dashboard: `http://localhost:5173`
+- FastAPI: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+
+Kiểm tra backend đang thực sự dùng WNTR:
+
+```powershell
+Invoke-RestMethod http://localhost:8000/api/health/runtime
+Invoke-RestMethod http://localhost:8000/api/networks/aquatwin_demo
+```
+
+Trường `runtime.effective_mode` phải là `real` và `wntr_available` phải là `true` trước khi chạy thực nghiệm cho báo cáo.
+
+Dừng sản phẩm:
+
+```powershell
+docker compose down
+```
+
 ## Quy ước nhánh
 
 - `main`: phiên bản đã tích hợp và chạy ổn định.

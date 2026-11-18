@@ -49,3 +49,13 @@ Scientific benchmark on a WNTR-compatible environment:
 $env:AQUATWIN_RUNTIME_MODE="real"
 python -m experiments.cli
 ```
+
+## Windows Application Control
+
+Một số máy Windows chặn các native module `.pyd` chưa được ký của WNTR. Đây là chính sách hệ điều hành, không phải lỗi mô phỏng của AquaTwin-X. Không nên tắt chính sách bảo mật chỉ để chạy dự án; hãy chạy backend trong Linux container:
+
+```powershell
+docker compose up --build
+```
+
+Backend trong Compose được cố định ở `AQUATWIN_RUNTIME_MODE=real`. Vì vậy hệ thống sẽ báo lỗi rõ ràng thay vì âm thầm tạo dữ liệu Demo khi WNTR không hoạt động.

@@ -12,3 +12,11 @@ def test_health_check() -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
 
+
+def test_runtime_health_check_exposes_effective_mode() -> None:
+    response = client.get("/api/health/runtime")
+
+    assert response.status_code == 200
+    assert response.json()["runtime"]["effective_mode"] in {"real", "demo", "unavailable"}
+    assert "wntr_available" in response.json()["runtime"]
+
