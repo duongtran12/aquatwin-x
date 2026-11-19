@@ -1,6 +1,10 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
+from backend.app.dependencies import get_aquatwin_service
 from backend.app.main import app
+from backend.app.services.aquatwin_service import AquaTwinService
 
 
 client = TestClient(app)
@@ -36,4 +40,54 @@ def test_lists_larger_benchmark_network() -> None:
     assert payload["network"]["junctions"] == 12
     assert payload["network"]["pipes"] == 21
     assert len(payload["valves"]) == 42
+
+
+def test_imports_network_and_generates_virtual_valves(tmp_path: Path) -> None:
+    service = AquaTwinService(
+        "demo",
+        custom_network_dir=tmp_path / "networks",
+        custom_valve_dir=tmp_path / "valves",
+    )
+    app.dependency_overrides[get_aquatwin_service] = lambda: service
+    source = Path("simulation/networks/aquatwin_demo.inp").read_bytes()
+    try:
+        response = client.post(
+            "/api/networks/import",
+            files={"file": ("City Pilot.inp", source, "application/octet-stream")},
+        )
+        duplicate = client.post(
+            "/api/networks/import",
+            files={"file": ("City Pilot.inp", source, "application/octet-stream")},
+        )
+        listing = client.get("/api/networks")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 201
+    assert response.json()["network"]["name"] == "city_pilot"
+    assert response.json()["source"] == "uploaded"
+    assert len(response.json()["valves"]) == 12
+    assert duplicate.status_code == 409
+    assert "city_pilot" in {item["name"] for item in listing.json()}
+    assert (tmp_path / "networks" / "city_pilot.inp").is_file()
+    assert (tmp_path / "valves" / "city_pilot_valves.json").is_file()
+
+
+def test_rejects_invalid_network_upload(tmp_path: Path) -> None:
+    service = AquaTwinService(
+        "demo",
+        custom_network_dir=tmp_path / "networks",
+        custom_valve_dir=tmp_path / "valves",
+    )
+    app.dependency_overrides[get_aquatwin_service] = lambda: service
+    try:
+        response = client.post(
+            "/api/networks/import",
+            files={"file": ("notes.txt", b"not an inp", "text/plain")},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert "Only EPANET .inp" in response.json()["detail"]
 

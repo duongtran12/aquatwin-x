@@ -27,6 +27,10 @@ simulation/outputs/*
 !simulation/outputs/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/networks/*
+!data/networks/.gitkeep
+data/valves/*
+!data/valves/.gitkeep
 optimization/outputs/*
 !optimization/outputs/.gitkeep
 

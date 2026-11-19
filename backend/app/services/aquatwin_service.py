@@ -1,6 +1,9 @@
+import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Callable
+from uuid import uuid4
 
 from backend.app.schemas.requests import (
     BaselineSimulationRequest,
@@ -31,8 +34,11 @@ from simulation.engine.demo import (
     run_demo_optimization,
 )
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-NETWORK_DIR = PROJECT_ROOT / "simulation" / "networks"
-VALVE_DIR = PROJECT_ROOT / "simulation" / "valves"
+BUILTIN_NETWORK_DIR = PROJECT_ROOT / "simulation" / "networks"
+BUILTIN_VALVE_DIR = PROJECT_ROOT / "simulation" / "valves"
+DEFAULT_CUSTOM_NETWORK_DIR = PROJECT_ROOT / "data" / "networks"
+DEFAULT_CUSTOM_VALVE_DIR = PROJECT_ROOT / "data" / "valves"
+MAX_NETWORK_FILE_SIZE = 5 * 1024 * 1024
 
 
 class AquaTwinService:
@@ -40,12 +46,22 @@ class AquaTwinService:
         self,
         runtime_mode: str | None = None,
         history_store: RunHistoryStore | None = None,
+        custom_network_dir: str | Path | None = None,
+        custom_valve_dir: str | Path | None = None,
     ) -> None:
         selected_mode = runtime_mode or os.getenv("AQUATWIN_RUNTIME_MODE", "auto")
         self.runtime_mode = selected_mode.strip().lower()
         if self.runtime_mode not in {"auto", "real", "demo"}:
             raise ValueError("AQUATWIN_RUNTIME_MODE must be auto, real, or demo")
         self.history_store = history_store
+        self.custom_network_dir = Path(
+            custom_network_dir
+            or os.getenv("AQUATWIN_CUSTOM_NETWORK_DIR", DEFAULT_CUSTOM_NETWORK_DIR)
+        )
+        self.custom_valve_dir = Path(
+            custom_valve_dir
+            or os.getenv("AQUATWIN_CUSTOM_VALVE_DIR", DEFAULT_CUSTOM_VALVE_DIR)
+        )
 
     @staticmethod
     def _history_summary(run_type: str, result: dict[str, Any]) -> dict[str, Any]:
@@ -144,22 +160,106 @@ class AquaTwinService:
             for character in network_id
         ):
             raise ValueError("network_id không hợp lệ")
-        path = NETWORK_DIR / f"{network_id}.inp"
-        if not path.is_file():
-            raise FileNotFoundError(f"Không tìm thấy mạng '{network_id}'")
-        return path
+        for directory in (BUILTIN_NETWORK_DIR, self.custom_network_dir):
+            path = directory / f"{network_id}.inp"
+            if path.is_file():
+                return path
+        raise FileNotFoundError(f"Network '{network_id}' was not found")
+
+    def _valve_path(self, network_id: str) -> Path:
+        for directory in (BUILTIN_VALVE_DIR, self.custom_valve_dir):
+            path = directory / f"{network_id}_valves.json"
+            if path.is_file():
+                return path
+        raise FileNotFoundError(f"Network '{network_id}' has no valve registry")
 
     def _valve_registry(self, network_id: str) -> Any:
-        path = VALVE_DIR / f"{network_id}_valves.json"
-        if not path.is_file():
-            raise FileNotFoundError(f"Mạng '{network_id}' chưa có lớp dữ liệu van")
-        return load_valve_registry(path)
+        return load_valve_registry(self._valve_path(network_id))
 
     def list_networks(self) -> list[dict[str, Any]]:
-        return [
-            inspect_inp(path).to_dict()
-            for path in sorted(NETWORK_DIR.glob("*.inp"))
-        ]
+        networks: dict[str, dict[str, Any]] = {}
+        for source, directory in (
+            ("builtin", BUILTIN_NETWORK_DIR),
+            ("uploaded", self.custom_network_dir),
+        ):
+            for path in sorted(directory.glob("*.inp")):
+                summary = inspect_inp(path).to_dict()
+                summary["source"] = source
+                networks.setdefault(str(summary["name"]), summary)
+        return sorted(networks.values(), key=lambda item: str(item["name"]))
+
+    def import_network(self, filename: str, content: bytes) -> dict[str, Any]:
+        if Path(filename or "").suffix.lower() != ".inp":
+            raise ValueError("Only EPANET .inp files are supported")
+        if not content:
+            raise ValueError("The uploaded network file is empty")
+        if len(content) > MAX_NETWORK_FILE_SIZE:
+            raise ValueError("The uploaded network file exceeds the 5 MB limit")
+
+        network_id = re.sub(r"[^a-zA-Z0-9_-]+", "_", Path(filename).stem).strip("_-").lower()
+        if not network_id:
+            raise ValueError("The uploaded file must have a valid network name")
+        if (BUILTIN_NETWORK_DIR / f"{network_id}.inp").exists():
+            raise FileExistsError(f"Network '{network_id}' is built in and cannot be replaced")
+
+        self.custom_network_dir.mkdir(parents=True, exist_ok=True)
+        self.custom_valve_dir.mkdir(parents=True, exist_ok=True)
+        network_path = self.custom_network_dir / f"{network_id}.inp"
+        valve_path = self.custom_valve_dir / f"{network_id}_valves.json"
+        if network_path.exists():
+            raise FileExistsError(f"Network '{network_id}' already exists")
+
+        try:
+            text = content.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise ValueError("The INP file must use UTF-8 compatible text encoding") from exc
+
+        token = uuid4().hex
+        temporary_network = self.custom_network_dir / f".{network_id}.{token}.inp"
+        temporary_valves = self.custom_valve_dir / f".{network_id}.{token}.json"
+        try:
+            temporary_network.write_text(text, encoding="utf-8")
+            summary = inspect_inp(temporary_network)
+            elements = read_inp_elements(temporary_network)
+            node_ids = {str(node["id"]) for node in elements["nodes"]}
+            pipe_links = [link for link in elements["links"] if link["type"] == "pipe"]
+            if summary.total_nodes < 2 or not pipe_links:
+                raise ValueError("The INP file must contain at least two nodes and one pipe")
+            if summary.reservoirs + summary.tanks < 1:
+                raise ValueError("The INP file must contain at least one reservoir or tank")
+            if len(node_ids) != len(elements["nodes"]):
+                raise ValueError("The INP file contains duplicate node IDs")
+            link_ids = [str(link["id"]) for link in elements["links"]]
+            if len(set(link_ids)) != len(link_ids):
+                raise ValueError("The INP file contains duplicate link IDs")
+            if any(
+                link["source"] not in node_ids or link["target"] not in node_ids
+                for link in elements["links"]
+            ):
+                raise ValueError("Every link endpoint must reference an existing node")
+
+            valves = [
+                {
+                    "valve_id": f"V_{link['id']}_{endpoint.upper()}",
+                    "link_id": link["id"],
+                    "endpoint": endpoint,
+                }
+                for link in pipe_links
+                for endpoint in ("start", "end")
+            ]
+            temporary_valves.write_text(
+                json.dumps({"network": network_id, "valves": valves}, indent=2),
+                encoding="utf-8",
+            )
+            temporary_network.replace(network_path)
+            temporary_valves.replace(valve_path)
+        except (IndexError, KeyError) as exc:
+            raise ValueError("The INP file structure is invalid") from exc
+        finally:
+            temporary_network.unlink(missing_ok=True)
+            temporary_valves.unlink(missing_ok=True)
+
+        return self.get_network(network_id)
 
     def get_network(self, network_id: str) -> dict[str, Any]:
         path = self._network_path(network_id)
@@ -169,12 +269,16 @@ class AquaTwinService:
             "valves": [],
             "runtime": self.runtime_status(),
         }
-        valve_path = VALVE_DIR / f"{network_id}_valves.json"
-        if valve_path.is_file():
+        try:
+            valve_path = self._valve_path(network_id)
+        except FileNotFoundError:
+            valve_path = None
+        if valve_path is not None:
             result["valves"] = [
                 valve.to_dict()
                 for valve in load_valve_registry(valve_path).valves
             ]
+        result["source"] = "builtin" if path.parent == BUILTIN_NETWORK_DIR else "uploaded"
         return result
 
     def run_baseline(self, request: BaselineSimulationRequest) -> dict[str, Any]:
@@ -257,7 +361,7 @@ class AquaTwinService:
         progress_callback: Callable[[int, int, str], None] | None = None,
     ) -> dict[str, Any]:
         network_path = self._network_path(request.network_id)
-        valve_path = VALVE_DIR / f"{request.network_id}_valves.json"
+        valve_path = self._valve_path(request.network_id)
         self._valve_registry(request.network_id)
         pipe_ids = {
             link["id"]

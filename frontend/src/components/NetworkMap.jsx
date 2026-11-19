@@ -26,11 +26,15 @@ function NetworkMap({ elements, selectedPipe, nodeStates, onSelectPipe }) {
         selected: link.id === selectedPipe ? "yes" : "no",
       },
     }));
+    const distinctPositions = new Set(nodes.map((node) => `${node.position.x}:${node.position.y}`));
+    const hasCoordinates = distinctPositions.size > 1;
 
     const instance = cytoscape({
       container: containerRef.current,
       elements: [...nodes, ...links],
-      layout: { name: "preset", fit: true, padding: 52 },
+      layout: hasCoordinates
+        ? { name: "preset", fit: true, padding: 52 }
+        : { name: "cose", fit: true, padding: 52, animate: false, randomize: true },
       minZoom: 0.55,
       maxZoom: 2.5,
       style: [

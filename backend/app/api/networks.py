@@ -1,9 +1,9 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from backend.app.dependencies import get_aquatwin_service
-from backend.app.services.aquatwin_service import AquaTwinService
+from backend.app.services.aquatwin_service import AquaTwinService, MAX_NETWORK_FILE_SIZE
 
 
 router = APIRouter(prefix="/networks", tags=["Networks"])
@@ -14,6 +14,18 @@ def list_networks(
     service: AquaTwinService = Depends(get_aquatwin_service),
 ) -> list[dict[str, Any]]:
     return service.list_networks()
+
+
+@router.post("/import", status_code=status.HTTP_201_CREATED)
+async def import_network(
+    file: UploadFile = File(...),
+    service: AquaTwinService = Depends(get_aquatwin_service),
+) -> dict[str, Any]:
+    try:
+        content = await file.read(MAX_NETWORK_FILE_SIZE + 1)
+        return service.import_network(file.filename or "", content)
+    except FileExistsError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/{network_id}")

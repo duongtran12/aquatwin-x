@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, importNetwork, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import BatchExperiment from "./components/BatchExperiment";
 import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
@@ -32,6 +32,7 @@ function App() {
   const [jobStatus, setJobStatus] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [networkImportBusy, setNetworkImportBusy] = useState(false);
 
   const scenarioErrors = useMemo(() => {
     const errors = [];
@@ -154,6 +155,25 @@ function App() {
     }
   };
 
+  const handleNetworkImport = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setNetworkImportBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const imported = await importNetwork(file);
+      setNetworks(await getNetworks());
+      setNetworkId(imported.network.name);
+      setNotice(`Network ${imported.network.name} imported with ${imported.valves.length} virtual valves.`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setNetworkImportBusy(false);
+    }
+  };
+
   const worstStep = useMemo(() => {
     if (!failureResult?.time_steps?.length) return null;
     return failureResult.time_steps.reduce((worst, step) => (
@@ -196,7 +216,19 @@ function App() {
       <main className="dashboard">
         <header className="topbar" id="overview">
           <div><p className="eyebrow">WATER NETWORK OPERATIONS</p><h1>Resilience control room</h1></div>
-          <label className="network-badge"><span>Active network · {runtime?.effective_mode || "loading"}</span><select value={networkId} onChange={(event) => setNetworkId(event.target.value)}>{networks.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
+          <div className="network-controls">
+            <label className="network-badge">
+              <span>Active network / {runtime?.effective_mode || "loading"}</span>
+              <select value={networkId} onChange={(event) => setNetworkId(event.target.value)}>
+                {networks.map((item) => <option key={item.name} value={item.name}>{item.name}{item.source === "uploaded" ? " (uploaded)" : ""}</option>)}
+              </select>
+            </label>
+            <label className={networkImportBusy ? "network-import network-import--busy" : "network-import"}>
+              <input type="file" accept=".inp" disabled={networkImportBusy} onChange={handleNetworkImport} />
+              <span>{networkImportBusy ? "Importing..." : "Import EPANET .inp"}</span>
+              <small>Max 5 MB / valves generated automatically</small>
+            </label>
+          </div>
         </header>
         {demoMode && <div className="runtime-notice"><strong>DEMO MODE</strong><span>Synthetic preview data is active because WNTR is blocked. These values must not be used in the experimental report.</span></div>}
         {error && <div className="alert"><strong>Request failed</strong><span>{error}</span></div>}

@@ -2,9 +2,13 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 
 async function request(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
   const response = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers,
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -24,6 +28,13 @@ export function getNetwork(networkId = "aquatwin_demo") {
 
 export function getNetworks() {
   return request("/api/networks");
+}
+
+
+export function importNetwork(file) {
+  const body = new FormData();
+  body.append("file", file);
+  return request("/api/networks/import", { method: "POST", body });
 }
 
 
