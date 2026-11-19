@@ -38,6 +38,13 @@ export function importNetwork(file) {
 }
 
 
+export function importValveRegistry(networkId, file) {
+  const body = new FormData();
+  body.append("file", file);
+  return request(`/api/networks/${networkId}/valves/import`, { method: "POST", body });
+}
+
+
 export function deleteNetwork(networkId) {
   return request(`/api/networks/${networkId}`, { method: "DELETE" });
 }

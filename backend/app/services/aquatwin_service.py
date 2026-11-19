@@ -39,6 +39,7 @@ BUILTIN_VALVE_DIR = PROJECT_ROOT / "simulation" / "valves"
 DEFAULT_CUSTOM_NETWORK_DIR = PROJECT_ROOT / "data" / "networks"
 DEFAULT_CUSTOM_VALVE_DIR = PROJECT_ROOT / "data" / "valves"
 MAX_NETWORK_FILE_SIZE = 5 * 1024 * 1024
+MAX_VALVE_REGISTRY_SIZE = 1024 * 1024
 
 
 class AquaTwinService:
@@ -248,7 +249,11 @@ class AquaTwinService:
                 for endpoint in ("start", "end")
             ]
             temporary_valves.write_text(
-                json.dumps({"network": network_id, "valves": valves}, indent=2),
+                json.dumps({
+                    "network": network_id,
+                    "source": "generated",
+                    "valves": valves,
+                }, indent=2),
                 encoding="utf-8",
             )
             temporary_network.replace(network_path)
@@ -271,12 +276,97 @@ class AquaTwinService:
         valve_path.unlink(missing_ok=True)
         return {"network_id": network_id, "status": "deleted"}
 
+    def import_valve_registry(
+        self,
+        network_id: str,
+        filename: str,
+        content: bytes,
+    ) -> dict[str, Any]:
+        network_path = self._network_path(network_id)
+        if network_path.parent == BUILTIN_NETWORK_DIR:
+            raise PermissionError(
+                f"Built-in network '{network_id}' valve registry cannot be replaced"
+            )
+        if Path(filename or "").suffix.lower() != ".json":
+            raise ValueError("Only JSON valve registry files are supported")
+        if not content:
+            raise ValueError("The uploaded valve registry is empty")
+        if len(content) > MAX_VALVE_REGISTRY_SIZE:
+            raise ValueError("The uploaded valve registry exceeds the 1 MB limit")
+
+        try:
+            payload = json.loads(content.decode("utf-8-sig"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("The valve registry must be valid UTF-8 JSON") from exc
+        if not isinstance(payload, dict) or not isinstance(payload.get("valves"), list):
+            raise ValueError("The valve registry must contain a valves array")
+        if payload.get("network") not in {None, network_id}:
+            raise ValueError("The valve registry network must match the active network")
+        if not payload["valves"]:
+            raise ValueError("The valve registry must contain at least one valve")
+
+        pipe_ids = {
+            str(link["id"])
+            for link in read_inp_elements(network_path)["links"]
+            if link["type"] == "pipe"
+        }
+        valves: list[dict[str, str]] = []
+        for item in payload["valves"]:
+            if not isinstance(item, dict):
+                raise ValueError("Every valve entry must be a JSON object")
+            try:
+                valve_id = str(item["valve_id"]).strip()
+                link_id = str(item["link_id"]).strip()
+                endpoint = str(item["endpoint"]).strip().lower()
+            except KeyError as exc:
+                raise ValueError(
+                    "Every valve requires valve_id, link_id and endpoint"
+                ) from exc
+            if not valve_id:
+                raise ValueError("valve_id cannot be empty")
+            if link_id not in pipe_ids:
+                raise ValueError(f"Unknown pipe ID in valve registry: {link_id}")
+            if endpoint not in {"start", "end"}:
+                raise ValueError("Valve endpoint must be start or end")
+            valves.append({
+                "valve_id": valve_id,
+                "link_id": link_id,
+                "endpoint": endpoint,
+            })
+
+        valve_ids = [item["valve_id"] for item in valves]
+        locations = [(item["link_id"], item["endpoint"]) for item in valves]
+        if len(set(valve_ids)) != len(valve_ids):
+            raise ValueError("Valve IDs must be unique")
+        if len(set(locations)) != len(locations):
+            raise ValueError("Only one valve is allowed at each pipe endpoint")
+
+        self.custom_valve_dir.mkdir(parents=True, exist_ok=True)
+        valve_path = self.custom_valve_dir / f"{network_id}_valves.json"
+        temporary_path = self.custom_valve_dir / f".{network_id}.{uuid4().hex}.json"
+        try:
+            temporary_path.write_text(
+                json.dumps({
+                    "network": network_id,
+                    "source": "surveyed",
+                    "valves": valves,
+                }, indent=2),
+                encoding="utf-8",
+            )
+            load_valve_registry(temporary_path)
+            temporary_path.replace(valve_path)
+        finally:
+            temporary_path.unlink(missing_ok=True)
+
+        return self.get_network(network_id)
+
     def get_network(self, network_id: str) -> dict[str, Any]:
         path = self._network_path(network_id)
         result = {
             "network": inspect_inp(path).to_dict(),
             "elements": read_inp_elements(path),
             "valves": [],
+            "valve_source": None,
             "runtime": self.runtime_status(),
         }
         try:
@@ -284,10 +374,16 @@ class AquaTwinService:
         except FileNotFoundError:
             valve_path = None
         if valve_path is not None:
+            valve_metadata = json.loads(valve_path.read_text(encoding="utf-8-sig"))
             result["valves"] = [
                 valve.to_dict()
                 for valve in load_valve_registry(valve_path).valves
             ]
+            result["valve_source"] = (
+                "builtin"
+                if path.parent == BUILTIN_NETWORK_DIR
+                else valve_metadata.get("source", "generated")
+            )
         result["source"] = "builtin" if path.parent == BUILTIN_NETWORK_DIR else "uploaded"
         return result
 

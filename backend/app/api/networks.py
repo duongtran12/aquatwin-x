@@ -3,7 +3,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from backend.app.dependencies import get_aquatwin_service
-from backend.app.services.aquatwin_service import AquaTwinService, MAX_NETWORK_FILE_SIZE
+from backend.app.services.aquatwin_service import (
+    AquaTwinService,
+    MAX_NETWORK_FILE_SIZE,
+    MAX_VALVE_REGISTRY_SIZE,
+)
 
 
 router = APIRouter(prefix="/networks", tags=["Networks"])
@@ -34,6 +38,23 @@ def get_network(
     service: AquaTwinService = Depends(get_aquatwin_service),
 ) -> dict[str, Any]:
     return service.get_network(network_id)
+
+
+@router.post("/{network_id}/valves/import")
+async def import_valve_registry(
+    network_id: str,
+    file: UploadFile = File(...),
+    service: AquaTwinService = Depends(get_aquatwin_service),
+) -> dict[str, Any]:
+    try:
+        content = await file.read(MAX_VALVE_REGISTRY_SIZE + 1)
+        return service.import_valve_registry(
+            network_id,
+            file.filename or "",
+            content,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.delete("/{network_id}")

@@ -31,7 +31,7 @@ a { color: inherit; text-decoration: none; }
 
 .dashboard { grid-column: 2; width: 100%; max-width: 1580px; margin: 0 auto; padding: 34px 38px 70px; }
 .topbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; }
-.network-controls { display: flex; align-items: stretch; gap: 8px; }
+.network-controls { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: flex-end; gap: 8px; }
 .eyebrow, .section-label { margin: 0 0 7px; color: #53cad6; font-size: .67rem; font-weight: 700; letter-spacing: .17em; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; color: #f0fbfc; font-size: clamp(1.75rem, 3vw, 2.5rem); letter-spacing: -.045em; }
@@ -47,6 +47,12 @@ h2 { margin-bottom: 0; color: #e9f7f9; font-size: 1.05rem; letter-spacing: -.018
 .network-import span { color: #74dfe3; font-size: .69rem; font-weight: 700; }
 .network-import small { margin-top: 3px; color: #55747f; font-size: .53rem; }
 .network-import--busy { cursor: wait; opacity: .65; }
+.valve-import { display: grid; min-width: 140px; align-content: center; padding: 9px 12px; border: 1px dashed #6d5a32; background: #282216; cursor: pointer; }
+.valve-import:hover { border-color: #d0a84e; background: #332a18; }
+.valve-import input { display: none; }
+.valve-import span { color: #e1bd6a; font-size: .65rem; font-weight: 700; }
+.valve-import small { margin-top: 3px; color: #8e7541; font-size: .53rem; }
+.valve-import--busy { cursor: wait; opacity: .65; }
 .network-delete { border: 1px solid #713f3b; background: #2c1c1d; padding: 0 12px; color: #ee9287; font-size: .65rem; font-weight: 700; }
 .network-delete:hover:not(:disabled) { border-color: #bc5d52; background: #3b2222; }
 .alert { display: flex; gap: 14px; margin-bottom: 20px; padding: 13px 16px; border-left: 3px solid #f06f5a; background: rgba(126, 40, 29, .24); color: #ffcec5; font-size: .8rem; }

@@ -18,6 +18,22 @@ Built-in networks cannot be replaced. Uploading another file with the same norma
 
 The importer creates two virtual isolation valves for every pipe, one at each endpoint. This makes the network immediately available to manual what-if recovery, exhaustive search and the Genetic Algorithm. The generated layer is an analytical assumption and should be replaced with surveyed valve data before operational use.
 
+## Surveyed valve registry
+
+For an uploaded network, select **Import valves JSON** and provide a registry up to 1 MB. AquaTwin-X validates that valve IDs and pipe-endpoint locations are unique, every referenced pipe exists, and each endpoint is either `start` or `end`. Invalid uploads do not replace the active registry.
+
+```json
+{
+  "network": "city_pilot",
+  "valves": [
+    {"valve_id": "SV-01", "link_id": "P1", "endpoint": "start"},
+    {"valve_id": "SV-02", "link_id": "P3", "endpoint": "end"}
+  ]
+}
+```
+
+The `network` field may be omitted, but when present it must match the active network ID. Built-in registry files are protected to keep benchmark results reproducible.
+
 ## Persistence
 
 Uploaded files are stored in `data/networks`, and generated valve registries are stored in `data/valves`. Both directories are part of the Docker `data` volume, so imported networks remain available after containers restart. Runtime files are ignored by Git.

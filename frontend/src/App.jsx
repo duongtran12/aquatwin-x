@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, importNetwork, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, importNetwork, importValveRegistry, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import BatchExperiment from "./components/BatchExperiment";
 import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
@@ -195,6 +195,24 @@ function App() {
     }
   };
 
+  const handleValveImport = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || network?.source !== "uploaded" || busy) return;
+    setNetworkImportBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const updated = await importValveRegistry(networkId, file);
+      setNetwork(updated);
+      setNotice(`Valve registry updated with ${updated.valves.length} surveyed valve locations.`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setNetworkImportBusy(false);
+    }
+  };
+
   const worstStep = useMemo(() => {
     if (!failureResult?.time_steps?.length) return null;
     return failureResult.time_steps.reduce((worst, step) => (
@@ -249,6 +267,11 @@ function App() {
               <span>{networkImportBusy ? "Importing..." : "Import EPANET .inp"}</span>
               <small>Max 5 MB / valves generated automatically</small>
             </label>
+            {network?.source === "uploaded" && <label className={networkImportBusy ? "valve-import valve-import--busy" : "valve-import"}>
+              <input type="file" accept=".json,application/json" disabled={networkImportBusy || Boolean(busy)} onChange={handleValveImport} />
+              <span>Import valves JSON</span>
+              <small>{network.valves.length} {network.valve_source || "active"} locations</small>
+            </label>}
             {network?.source === "uploaded" && <button className="network-delete" type="button" disabled={networkImportBusy || Boolean(busy)} onClick={handleNetworkDelete}>Delete</button>}
           </div>
         </header>
@@ -261,7 +284,7 @@ function App() {
             <div className="panel-heading"><div><p className="section-label">LIVE TOPOLOGY</p><h2>Distribution network</h2></div><div className="legend"><span className="legend-normal" />Normal <span className="legend-impact" />Affected</div></div>
             {network ? <NetworkMap elements={network.elements} selectedPipe={selectedPipe} nodeStates={nodeStates} onSelectPipe={setSelectedPipe} /> : <div className="loading-block">Loading network model...</div>}
             <div className="map-footer">
-              <span><strong>{nodeCount}</strong> nodes</span><span><strong>{network?.network?.pipes || 0}</strong> pipes</span><span><strong>{network?.valves?.length || 0}</strong> virtual valves</span><span className="map-tip">Select a pipe to define the incident</span>
+              <span><strong>{nodeCount}</strong> nodes</span><span><strong>{network?.network?.pipes || 0}</strong> pipes</span><span><strong>{network?.valves?.length || 0}</strong> {network?.valve_source === "surveyed" ? "surveyed valves" : "virtual valves"}</span><span className="map-tip">Select a pipe to define the incident</span>
             </div>
           </article>
 

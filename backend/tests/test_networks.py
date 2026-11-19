@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -66,6 +67,7 @@ def test_imports_network_and_generates_virtual_valves(tmp_path: Path) -> None:
     assert response.status_code == 201
     assert response.json()["network"]["name"] == "city_pilot"
     assert response.json()["source"] == "uploaded"
+    assert response.json()["valve_source"] == "generated"
     assert len(response.json()["valves"]) == 12
     assert duplicate.status_code == 409
     assert "city_pilot" in {item["name"] for item in listing.json()}
@@ -118,4 +120,78 @@ def test_deletes_only_uploaded_networks(tmp_path: Path) -> None:
     assert protected.status_code == 403
     assert not (tmp_path / "networks" / "temporary.inp").exists()
     assert not (tmp_path / "valves" / "temporary_valves.json").exists()
+
+
+def test_imports_validated_valve_registry_for_uploaded_network(tmp_path: Path) -> None:
+    service = AquaTwinService(
+        "demo",
+        custom_network_dir=tmp_path / "networks",
+        custom_valve_dir=tmp_path / "valves",
+    )
+    app.dependency_overrides[get_aquatwin_service] = lambda: service
+    source = Path("simulation/networks/aquatwin_demo.inp").read_bytes()
+    registry = {
+        "network": "survey",
+        "valves": [
+            {"valve_id": "SV-01", "link_id": "P1", "endpoint": "start"},
+            {"valve_id": "SV-02", "link_id": "P3", "endpoint": "end"},
+        ],
+    }
+    invalid_registry = {
+        "network": "survey",
+        "valves": [
+            {"valve_id": "BAD", "link_id": "P999", "endpoint": "start"},
+        ],
+    }
+    try:
+        imported = client.post(
+            "/api/networks/import",
+            files={"file": ("Survey.inp", source, "application/octet-stream")},
+        )
+        updated = client.post(
+            "/api/networks/survey/valves/import",
+            files={
+                "file": (
+                    "survey_valves.json",
+                    json.dumps(registry).encode(),
+                    "application/json",
+                )
+            },
+        )
+        rejected = client.post(
+            "/api/networks/survey/valves/import",
+            files={
+                "file": (
+                    "invalid.json",
+                    json.dumps(invalid_registry).encode(),
+                    "application/json",
+                )
+            },
+        )
+        preserved = client.get("/api/networks/survey")
+        protected = client.post(
+            "/api/networks/aquatwin_demo/valves/import",
+            files={
+                "file": (
+                    "protected.json",
+                    json.dumps(registry).encode(),
+                    "application/json",
+                )
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert imported.status_code == 201
+    assert updated.status_code == 200
+    assert updated.json()["valve_source"] == "surveyed"
+    assert [item["valve_id"] for item in updated.json()["valves"]] == ["SV-01", "SV-02"]
+    assert rejected.status_code == 400
+    assert "Unknown pipe ID" in rejected.json()["detail"]
+    assert len(preserved.json()["valves"]) == 2
+    assert protected.status_code == 403
+    saved = json.loads((tmp_path / "valves" / "survey_valves.json").read_text())
+    assert saved["network"] == registry["network"]
+    assert saved["source"] == "surveyed"
+    assert saved["valves"] == registry["valves"]
 
