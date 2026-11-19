@@ -261,6 +261,16 @@ class AquaTwinService:
 
         return self.get_network(network_id)
 
+    def delete_network(self, network_id: str) -> dict[str, str]:
+        network_path = self._network_path(network_id)
+        if network_path.parent == BUILTIN_NETWORK_DIR:
+            raise PermissionError(f"Built-in network '{network_id}' cannot be deleted")
+
+        network_path.unlink()
+        valve_path = self.custom_valve_dir / f"{network_id}_valves.json"
+        valve_path.unlink(missing_ok=True)
+        return {"network_id": network_id, "status": "deleted"}
+
     def get_network(self, network_id: str) -> dict[str, Any]:
         path = self._network_path(network_id)
         result = {

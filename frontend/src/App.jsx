@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, importNetwork, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, importNetwork, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import BatchExperiment from "./components/BatchExperiment";
 import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
@@ -174,6 +174,27 @@ function App() {
     }
   };
 
+  const handleNetworkDelete = async () => {
+    if (network?.source !== "uploaded" || busy) return;
+    if (!window.confirm(`Delete uploaded network ${networkId}? Saved run history will be kept.`)) return;
+    setNetworkImportBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await deleteNetwork(networkId);
+      const availableNetworks = await getNetworks();
+      setNetworks(availableNetworks);
+      setNetworkId(availableNetworks.some((item) => item.name === DEFAULT_NETWORK_ID)
+        ? DEFAULT_NETWORK_ID
+        : availableNetworks[0]?.name || "");
+      setNotice(`Network ${networkId} deleted. Historical run evidence was preserved.`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setNetworkImportBusy(false);
+    }
+  };
+
   const worstStep = useMemo(() => {
     if (!failureResult?.time_steps?.length) return null;
     return failureResult.time_steps.reduce((worst, step) => (
@@ -228,6 +249,7 @@ function App() {
               <span>{networkImportBusy ? "Importing..." : "Import EPANET .inp"}</span>
               <small>Max 5 MB / valves generated automatically</small>
             </label>
+            {network?.source === "uploaded" && <button className="network-delete" type="button" disabled={networkImportBusy || Boolean(busy)} onClick={handleNetworkDelete}>Delete</button>}
           </div>
         </header>
         {demoMode && <div className="runtime-notice"><strong>DEMO MODE</strong><span>Synthetic preview data is active because WNTR is blocked. These values must not be used in the experimental report.</span></div>}

@@ -35,3 +35,14 @@ def get_network(
 ) -> dict[str, Any]:
     return service.get_network(network_id)
 
+
+@router.delete("/{network_id}")
+def delete_network(
+    network_id: str,
+    service: AquaTwinService = Depends(get_aquatwin_service),
+) -> dict[str, str]:
+    try:
+        return service.delete_network(network_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+

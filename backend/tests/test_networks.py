@@ -91,3 +91,31 @@ def test_rejects_invalid_network_upload(tmp_path: Path) -> None:
     assert response.status_code == 400
     assert "Only EPANET .inp" in response.json()["detail"]
 
+
+def test_deletes_only_uploaded_networks(tmp_path: Path) -> None:
+    service = AquaTwinService(
+        "demo",
+        custom_network_dir=tmp_path / "networks",
+        custom_valve_dir=tmp_path / "valves",
+    )
+    app.dependency_overrides[get_aquatwin_service] = lambda: service
+    source = Path("simulation/networks/aquatwin_demo.inp").read_bytes()
+    try:
+        imported = client.post(
+            "/api/networks/import",
+            files={"file": ("Temporary.inp", source, "application/octet-stream")},
+        )
+        deleted = client.delete("/api/networks/temporary")
+        missing = client.get("/api/networks/temporary")
+        protected = client.delete("/api/networks/aquatwin_demo")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert imported.status_code == 201
+    assert deleted.status_code == 200
+    assert deleted.json() == {"network_id": "temporary", "status": "deleted"}
+    assert missing.status_code == 404
+    assert protected.status_code == 403
+    assert not (tmp_path / "networks" / "temporary.inp").exists()
+    assert not (tmp_path / "valves" / "temporary_valves.json").exists()
+

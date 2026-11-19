@@ -38,6 +38,11 @@ export function importNetwork(file) {
 }
 
 
+export function deleteNetwork(networkId) {
+  return request(`/api/networks/${networkId}`, { method: "DELETE" });
+}
+
+
 export function getHistory(limit = 12) {
   return request(`/api/history?limit=${limit}`);
 }

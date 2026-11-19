@@ -22,4 +22,6 @@ The importer creates two virtual isolation valves for every pipe, one at each en
 
 Uploaded files are stored in `data/networks`, and generated valve registries are stored in `data/valves`. Both directories are part of the Docker `data` volume, so imported networks remain available after containers restart. Runtime files are ignored by Git.
 
+An uploaded network can be removed with the **Delete** button beside the importer. AquaTwin-X requires confirmation, removes its generated valve registry and switches back to the built-in demo network. Built-in networks are protected from deletion. Existing run history and experiment archives are intentionally retained as immutable evidence.
+
 Networks without coordinates are displayed with an automatic graph layout. Networks with an EPANET `[COORDINATES]` section preserve their supplied positions.
