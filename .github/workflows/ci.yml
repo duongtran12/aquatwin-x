@@ -1,0 +1,112 @@
+name: AquaTwin-X CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aquatwin-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-real-runtime:
+    name: Backend tests and real WNTR smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AQUATWIN_RUNTIME_MODE: real
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Verify real WNTR runtime
+        run: |
+          python - <<'PY'
+          from backend.app.services.aquatwin_service import AquaTwinService
+
+          runtime = AquaTwinService("real").runtime_status()
+          print(runtime)
+          assert runtime["effective_mode"] == "real"
+          assert runtime["wntr_available"] is True
+          assert runtime["synthetic_data"] is False
+          PY
+
+      - name: Run Python test suite
+        run: python -m pytest -q
+
+      - name: Run real hydraulic smoke scenarios
+        run: |
+          mkdir -p data/processed/ci
+          python -m simulation.cli baseline --output data/processed/ci/baseline.json
+          python -m simulation.cli failure --output data/processed/ci/failure.json
+          python -m simulation.cli recovery --output data/processed/ci/recovery.json
+
+      - name: Validate hydraulic outputs
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("data/processed/ci")
+          baseline = json.loads((root / "baseline.json").read_text(encoding="utf-8"))
+          failure = json.loads((root / "failure.json").read_text(encoding="utf-8"))
+          recovery = json.loads((root / "recovery.json").read_text(encoding="utf-8"))
+
+          assert baseline["scenario"] == "baseline"
+          assert len(baseline["time_steps"]) >= 24
+          assert failure["scenario"] == "pipe_leak"
+          assert failure["summary"]["total_leakage_volume"] > 0
+          assert recovery["scenario"] == "manual_recovery"
+          assert "improvement" in recovery
+          print("Real WNTR hydraulic smoke scenarios validated.")
+          PY
+
+      - name: Upload real WNTR evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-wntr-smoke-${{ github.sha }}
+          path: data/processed/ci/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  frontend-build:
+    name: Frontend production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
