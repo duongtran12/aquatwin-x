@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { experimentDownloadUrl, getBatchExperiment, getBatchExperiments, startBatchExperiment, waitForBatchExperiment } from "../api/client";
+import ExperimentReport from "./ExperimentReport";
 
 
 const parseNumbers = (value) => value.split(",").map((item) => Number(item.trim())).filter(Number.isFinite);
@@ -118,6 +119,8 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
         <div><span>Exhaustive mean time</span><strong>{fixed(exhaustive.mean_computation_time_seconds, 3)}s</strong></div>
         <div className="experiment-downloads"><a href={experimentDownloadUrl(job.job_id, "csv")}>Raw CSV</a><a href={experimentDownloadUrl(job.job_id, "summary")}>Summary CSV</a><a href={experimentDownloadUrl(job.job_id, "report")}>Report MD</a><a href={experimentDownloadUrl(job.job_id, "json")}>Full JSON</a></div>
       </div>}
+
+      <ExperimentReport result={result} />
 
       <div className="experiment-archive">
         <div className="experiment-archive__heading"><div><p className="section-label">EXPERIMENT ARCHIVE</p><h3>Saved benchmark runs</h3></div><button className="text-button" type="button" onClick={refreshArchive}>Refresh</button></div>
