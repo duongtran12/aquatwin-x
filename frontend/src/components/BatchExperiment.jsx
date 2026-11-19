@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { experimentDownloadUrl, startBatchExperiment, waitForBatchExperiment } from "../api/client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { experimentDownloadUrl, getBatchExperiment, getBatchExperiments, startBatchExperiment, waitForBatchExperiment } from "../api/client";
 
 
 const parseNumbers = (value) => value.split(",").map((item) => Number(item.trim())).filter(Number.isFinite);
@@ -12,6 +12,8 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
   const [seeds, setSeeds] = useState("7, 42, 101");
   const [job, setJob] = useState(null);
   const [result, setResult] = useState(null);
+  const [archive, setArchive] = useState([]);
+  const [archiveBusy, setArchiveBusy] = useState("");
   const [error, setError] = useState("");
   const busy = job && !["completed", "failed"].includes(job.status);
 
@@ -20,6 +22,14 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
     setJob(null);
     setResult(null);
   }, [networkId, pipes]);
+
+  const refreshArchive = useCallback(() => getBatchExperiments()
+    .then(setArchive)
+    .catch((requestError) => setError(requestError.message)), []);
+
+  useEffect(() => {
+    refreshArchive();
+  }, [refreshArchive]);
 
   const totalRuns = useMemo(() => {
     const areaCount = parseNumbers(leakAreas).length;
@@ -50,8 +60,22 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
       });
       setJob(created);
       setResult(await waitForBatchExperiment(created.job_id, setJob));
+      await refreshArchive();
     } catch (requestError) {
       setError(requestError.message);
+    }
+  };
+
+  const openArchived = async (experimentId) => {
+    setArchiveBusy(experimentId);
+    setError("");
+    try {
+      setResult(await getBatchExperiment(experimentId));
+      setJob({ job_id: experimentId, status: "completed", progress: { percent: 100, message: "Archived experiment" } });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setArchiveBusy("");
     }
   };
 
@@ -94,6 +118,22 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
         <div><span>Exhaustive mean time</span><strong>{fixed(exhaustive.mean_computation_time_seconds, 3)}s</strong></div>
         <div className="experiment-downloads"><a href={experimentDownloadUrl(job.job_id, "csv")}>Raw CSV</a><a href={experimentDownloadUrl(job.job_id, "summary")}>Summary CSV</a><a href={experimentDownloadUrl(job.job_id, "report")}>Report MD</a><a href={experimentDownloadUrl(job.job_id, "json")}>Full JSON</a></div>
       </div>}
+
+      <div className="experiment-archive">
+        <div className="experiment-archive__heading"><div><p className="section-label">EXPERIMENT ARCHIVE</p><h3>Saved benchmark runs</h3></div><button className="text-button" type="button" onClick={refreshArchive}>Refresh</button></div>
+        {archive.length ? <div className="experiment-archive__table">
+          <div className="experiment-archive__row experiment-archive__row--head"><span>Network</span><span>Mode</span><span>Scenarios</span><span>GA score</span><span>Hit rate</span><span>Created</span><span>Action</span></div>
+          {archive.map((item) => <div className="experiment-archive__row" key={item.experiment_id}>
+            <strong>{item.network_id || "Unknown"}</strong>
+            <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</span>
+            <span>{item.scenario_count}</span>
+            <span>{fixed(item.ga_mean_score)}</span>
+            <span>{item.global_optimum_hit_rate == null ? "--" : `${fixed(item.global_optimum_hit_rate * 100, 1)}%`}</span>
+            <span>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
+            <button type="button" onClick={() => openArchived(item.experiment_id)} disabled={archiveBusy === item.experiment_id}>{archiveBusy === item.experiment_id ? "Loading..." : "Open"}</button>
+          </div>)}
+        </div> : <p className="experiment-archive__empty">No saved benchmark runs yet.</p>}
+      </div>
     </section>
   );
 }

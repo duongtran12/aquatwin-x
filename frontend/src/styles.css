@@ -165,6 +165,16 @@ input[aria-invalid="true"] { border-color: #d36b58; }
 .experiment-result strong { margin-top: 5px; color: #d9eef0; font-size: .88rem; }
 .experiment-result .experiment-downloads { display: flex; flex-direction: column; justify-content: center; gap: 5px; }
 .experiment-downloads a { color: #64d8dd; font-size: .66rem; font-weight: 700; }
+.experiment-archive { margin-top: 24px; padding-top: 20px; border-top: 1px solid #193b47; }
+.experiment-archive__heading { display: flex; align-items: flex-start; justify-content: space-between; }
+.experiment-archive__heading h3 { margin-top: 4px; color: #d9eef0; font-size: 1rem; }
+.experiment-archive__table { margin-top: 14px; overflow-x: auto; }
+.experiment-archive__row { display: grid; grid-template-columns: 1.2fr .55fr .55fr .65fr .65fr 1.25fr .45fr; min-width: 780px; align-items: center; gap: 10px; padding: 11px 5px; border-bottom: 1px solid #183844; color: #78949e; font-size: .68rem; }
+.experiment-archive__row strong { color: #d5edef; }
+.experiment-archive__row--head { color: #4e717c; font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; }
+.experiment-archive__row button { border: 0; background: transparent; padding: 0; color: #64d8dd; font: inherit; font-weight: 700; text-align: left; }
+.experiment-archive__row button:disabled { color: #4e717c; }
+.experiment-archive__empty { margin-top: 14px; color: #607f89; font-size: .72rem; }
 .history-panel { margin-top: 18px; padding: 24px; scroll-margin-top: 20px; }
 .text-button { border: 0; background: transparent; color: #5bd7dc; font-size: .7rem; font-weight: 700; }
 .history-table { margin-top: 16px; overflow-x: auto; }

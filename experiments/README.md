@@ -27,6 +27,8 @@ data/benchmark/week8_demo/benchmark_report.md
 
 The raw CSV is ready to import into Excel or pandas. The summary CSV compares GA with exhaustive search per scenario, including score gap, optimum hit rate, speedup and candidate reduction. The Markdown report contains tables and headline results ready to adapt into the evaluation chapter.
 
+API-triggered batches are stored under `data/benchmark/api/<experiment_id>`. The experiment archive endpoints scan these immutable folders, so completed results and downloads remain available after the backend restarts.
+
 Use another reproducible configuration with:
 
 ```powershell

@@ -19,7 +19,29 @@ class FakeExperimentService:
         csv_path = target / "benchmark_runs.csv"
         summary_path = target / "benchmark_summary.csv"
         report_path = target / "benchmark_report.md"
-        json_path.write_text(json.dumps({"runs": []}), encoding="utf-8")
+        result = {
+            "configuration": {"scenario_count": 1, "network_id": request.network_id},
+            "runtime": {"mode": "real", "synthetic_data": False},
+            "summary": {
+                "genetic_algorithm": {
+                    "run_count": 1,
+                    "mean_score": 91.5,
+                    "global_optimum_hit_rate": 1.0,
+                },
+            },
+            "evaluation": {
+                "overall": {
+                    "ga_run_count": 1,
+                    "mean_score_gap": 0.0,
+                    "mean_speedup": 2.5,
+                    "mean_candidate_reduction_rate": 0.6,
+                    "global_optimum_hit_rate": 1.0,
+                },
+                "scenarios": [],
+            },
+            "runs": [],
+        }
+        json_path.write_text(json.dumps(result), encoding="utf-8")
         with csv_path.open("w", encoding="utf-8", newline="") as stream:
             writer = csv.writer(stream)
             writer.writerow(["scenario_id", "score"])
@@ -27,9 +49,7 @@ class FakeExperimentService:
         report_path.write_text("# Benchmark report\n", encoding="utf-8")
         progress_callback(3, 3, "Completed")
         return {
-            "configuration": {"scenario_count": 1},
-            "summary": {},
-            "runs": [],
+            **result,
             "output_files": {
                 "json": str(json_path),
                 "csv": str(csv_path),
@@ -65,6 +85,8 @@ def test_starts_tracks_and_downloads_batch_experiment(tmp_path) -> None:
     download = client.get(f"/api/experiments/{job_id}/download?format=csv")
     summary_download = client.get(f"/api/experiments/{job_id}/download?format=summary")
     report_download = client.get(f"/api/experiments/{job_id}/download?format=report")
+    archive = client.get("/api/experiments").json()
+    archived_result = client.get(f"/api/experiments/{job_id}").json()
     assert job["progress"]["percent"] == 100.0
     assert download.status_code == 200
     assert "scenario_id" in download.text
@@ -72,6 +94,18 @@ def test_starts_tracks_and_downloads_batch_experiment(tmp_path) -> None:
     assert "ga_mean_score" in summary_download.text
     assert report_download.status_code == 200
     assert "Benchmark report" in report_download.text
+    assert archive[0]["experiment_id"] == job_id
+    assert archive[0]["runtime_mode"] == "real"
+    assert archive[0]["ga_mean_score"] == 91.5
+    assert archived_result["experiment_id"] == job_id
+    assert archived_result["evaluation"]["overall"]["mean_speedup"] == 2.5
+
+    restarted_manager = JobManager(max_workers=1)
+    app.dependency_overrides[get_job_manager] = lambda: restarted_manager
+    persistent_download = client.get(f"/api/experiments/{job_id}/download?format=report")
+    assert persistent_download.status_code == 200
+    assert client.get("/api/experiments/not/a/valid/id").status_code == 404
+    restarted_manager.shutdown()
     app.dependency_overrides.clear()
     experiments.OUTPUT_ROOT = original_root
     manager.shutdown()

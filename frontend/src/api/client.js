@@ -109,6 +109,16 @@ export function startBatchExperiment(payload) {
 }
 
 
+export function getBatchExperiments(limit = 12) {
+  return request(`/api/experiments?limit=${limit}`);
+}
+
+
+export function getBatchExperiment(experimentId) {
+  return request(`/api/experiments/${experimentId}`);
+}
+
+
 export async function waitForBatchExperiment(jobId, onStatus) {
   for (let attempt = 0; attempt < 720; attempt += 1) {
     const job = await request(`/api/jobs/${jobId}`);
