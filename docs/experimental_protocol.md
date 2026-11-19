@@ -46,6 +46,8 @@ python -m experiments.cli
 
 Keep the generated JSON as the machine-readable evidence and use the CSV for tables and charts in the report. Do not manually alter either file after a run; change the configuration and rerun instead.
 
+Each completed batch also produces `benchmark_summary.csv` and `benchmark_report.md`. The summary provides one comparison row per scenario; the Markdown report automatically presents method statistics, GA quality, speedup and candidate-reduction evidence.
+
 ## Extended benchmark network
 
 `aquatwin_benchmark` contains 12 demand junctions, one reservoir, 21 pipes and 42 virtual isolation valves. It provides a larger multi-loop search space than the four-junction demonstration network.

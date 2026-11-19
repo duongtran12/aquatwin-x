@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, Callable
 from uuid import uuid4
@@ -17,7 +17,7 @@ class JobManager:
 
     @staticmethod
     def _timestamp() -> str:
-        return datetime.now(UTC).isoformat()
+        return datetime.now(timezone.utc).isoformat()
 
     def _create_job(self, total_steps: int | None = None) -> str:
         job_id = uuid4().hex

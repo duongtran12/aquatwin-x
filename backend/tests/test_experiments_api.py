@@ -17,16 +17,25 @@ class FakeExperimentService:
         target.mkdir(parents=True, exist_ok=True)
         json_path = target / "benchmark_results.json"
         csv_path = target / "benchmark_runs.csv"
+        summary_path = target / "benchmark_summary.csv"
+        report_path = target / "benchmark_report.md"
         json_path.write_text(json.dumps({"runs": []}), encoding="utf-8")
         with csv_path.open("w", encoding="utf-8", newline="") as stream:
             writer = csv.writer(stream)
             writer.writerow(["scenario_id", "score"])
+        summary_path.write_text("scenario_id,ga_mean_score\n", encoding="utf-8")
+        report_path.write_text("# Benchmark report\n", encoding="utf-8")
         progress_callback(3, 3, "Completed")
         return {
             "configuration": {"scenario_count": 1},
             "summary": {},
             "runs": [],
-            "output_files": {"json": str(json_path), "csv": str(csv_path)},
+            "output_files": {
+                "json": str(json_path),
+                "csv": str(csv_path),
+                "summary": str(summary_path),
+                "report": str(report_path),
+            },
         }
 
 
@@ -54,9 +63,15 @@ def test_starts_tracks_and_downloads_batch_experiment(tmp_path) -> None:
             break
         sleep(0.001)
     download = client.get(f"/api/experiments/{job_id}/download?format=csv")
+    summary_download = client.get(f"/api/experiments/{job_id}/download?format=summary")
+    report_download = client.get(f"/api/experiments/{job_id}/download?format=report")
     assert job["progress"]["percent"] == 100.0
     assert download.status_code == 200
     assert "scenario_id" in download.text
+    assert summary_download.status_code == 200
+    assert "ga_mean_score" in summary_download.text
+    assert report_download.status_code == 200
+    assert "Benchmark report" in report_download.text
     app.dependency_overrides.clear()
     experiments.OUTPUT_ROOT = original_root
     manager.shutdown()

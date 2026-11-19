@@ -57,6 +57,7 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
 
   const ga = result?.summary?.genetic_algorithm || {};
   const exhaustive = result?.summary?.exhaustive_search || {};
+  const evaluation = result?.evaluation?.overall || {};
 
   return (
     <section className="panel experiment-panel" id="experiments">
@@ -88,8 +89,10 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
         <div><span>Scenarios</span><strong>{result.configuration.scenario_count}</strong></div>
         <div><span>GA mean score</span><strong>{fixed(ga.mean_score)}</strong></div>
         <div><span>Optimum hit rate</span><strong>{ga.global_optimum_hit_rate == null ? "--" : `${fixed(ga.global_optimum_hit_rate * 100, 1)}%`}</strong></div>
+        <div><span>Mean GA speedup</span><strong>{evaluation.mean_speedup == null ? "--" : `${fixed(evaluation.mean_speedup, 2)}x`}</strong></div>
+        <div><span>Candidate reduction</span><strong>{evaluation.mean_candidate_reduction_rate == null ? "--" : `${fixed(evaluation.mean_candidate_reduction_rate * 100, 1)}%`}</strong></div>
         <div><span>Exhaustive mean time</span><strong>{fixed(exhaustive.mean_computation_time_seconds, 3)}s</strong></div>
-        <div className="experiment-downloads"><a href={experimentDownloadUrl(job.job_id, "csv")}>Download CSV</a><a href={experimentDownloadUrl(job.job_id, "json")}>Download JSON</a></div>
+        <div className="experiment-downloads"><a href={experimentDownloadUrl(job.job_id, "csv")}>Raw CSV</a><a href={experimentDownloadUrl(job.job_id, "summary")}>Summary CSV</a><a href={experimentDownloadUrl(job.job_id, "report")}>Report MD</a><a href={experimentDownloadUrl(job.job_id, "json")}>Full JSON</a></div>
       </div>}
     </section>
   );

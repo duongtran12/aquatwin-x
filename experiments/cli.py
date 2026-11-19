@@ -25,6 +25,8 @@ def main() -> None:
     print(f"GA global optimum hit rate: {ga_summary['global_optimum_hit_rate']:.1%}")
     print(f"JSON: {result['output_files']['json']}")
     print(f"CSV: {result['output_files']['csv']}")
+    print(f"Summary: {result['output_files']['summary']}")
+    print(f"Report: {result['output_files']['report']}")
 
 
 if __name__ == "__main__":

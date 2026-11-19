@@ -2,7 +2,12 @@ import json
 import tempfile
 from pathlib import Path
 
-from experiments.benchmark import BenchmarkConfig, build_scenarios, run_benchmark
+from experiments.benchmark import (
+    BenchmarkConfig,
+    build_scenarios,
+    render_markdown_report,
+    run_benchmark,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -89,8 +94,24 @@ def test_runs_benchmark_and_writes_report_files() -> None:
         result = run_benchmark(config, directory, fake_exhaustive, fake_ga)
         json_path = Path(result["output_files"]["json"])
         csv_path = Path(result["output_files"]["csv"])
+        summary_path = Path(result["output_files"]["summary"])
+        report_path = Path(result["output_files"]["report"])
         assert json_path.is_file()
         assert csv_path.is_file()
+        assert summary_path.is_file()
+        assert report_path.is_file()
         assert len(result["runs"]) == 4
         assert result["summary"]["genetic_algorithm"]["global_optimum_hit_rate"] == 0.5
         assert result["runs"][0]["failure_maximum_affected_nodes"] == 4
+        overall = result["evaluation"]["overall"]
+        assert overall["mean_score_gap"] == 1.0
+        assert overall["maximum_score_gap"] == 2.0
+        assert overall["within_one_point_rate"] == 0.5
+        assert overall["mean_speedup"] == 2.0
+        assert round(overall["mean_candidate_reduction_rate"], 6) == round(1 - 30 / 79, 6)
+        scenario = result["evaluation"]["scenarios"][0]
+        assert scenario["ga_best_seed"] == 7
+        assert scenario["ga_mean_score"] == 89.0
+        report = render_markdown_report(result)
+        assert "GA compared with exhaustive search" in report
+        assert "P1_L1" in report

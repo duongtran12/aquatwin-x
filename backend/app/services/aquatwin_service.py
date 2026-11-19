@@ -341,7 +341,12 @@ class AquaTwinService:
         result.pop("output_files", None)
         for row in result["runs"]:
             row["runtime_mode"] = runtime["effective_mode"]
-        json_path, csv_path = write_results(result, output_dir)
-        result["output_files"] = {"json": str(json_path), "csv": str(csv_path)}
+        json_path, csv_path, summary_path, report_path = write_results(result, output_dir)
+        result["output_files"] = {
+            "json": str(json_path),
+            "csv": str(csv_path),
+            "summary": str(summary_path),
+            "report": str(report_path),
+        }
         return result
 

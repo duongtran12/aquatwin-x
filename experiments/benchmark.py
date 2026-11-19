@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from statistics import mean
+from statistics import mean, median, pstdev
 from typing import Any, Callable
 
 from optimization.ga_runner import run_genetic_search
@@ -142,6 +142,8 @@ def summarize_runs(rows: list[dict[str, Any]]) -> dict[str, Any]:
         method_summary: dict[str, Any] = {
             "run_count": len(method_rows),
             "mean_score": mean(scores) if scores else None,
+            "median_score": median(scores) if scores else None,
+            "score_standard_deviation": pstdev(scores) if len(scores) > 1 else 0.0 if scores else None,
             "mean_computation_time_seconds": mean(times) if times else None,
         }
         optimum_flags = [row["found_global_optimum"] for row in method_rows if row["found_global_optimum"] is not None]
@@ -151,11 +153,170 @@ def summarize_runs(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return summary
 
 
-def write_results(result: dict[str, Any], output_dir: str | Path) -> tuple[Path, Path]:
+def summarize_scenarios(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        grouped[row["scenario_id"]].append(row)
+
+    scenarios = []
+    for scenario_id, scenario_rows in grouped.items():
+        exhaustive = next(row for row in scenario_rows if row["method"] == "exhaustive_search")
+        baseline = next(row for row in scenario_rows if row["method"] == "isolation_baseline")
+        ga_rows = [row for row in scenario_rows if row["method"] == "genetic_algorithm"]
+        ga_scores = [float(row["score"]) for row in ga_rows if row["score"] is not None]
+        ga_gaps = [float(row["score_gap_to_exhaustive"]) for row in ga_rows if row["score_gap_to_exhaustive"] is not None]
+        ga_times = [float(row["computation_time_seconds"]) for row in ga_rows]
+        ga_counts = [float(row["evaluated_count"]) for row in ga_rows if row["evaluated_count"] is not None]
+        exhaustive_time = float(exhaustive["computation_time_seconds"])
+        exhaustive_count = float(exhaustive["evaluated_count"] or 0)
+        mean_ga_time = mean(ga_times) if ga_times else None
+        mean_ga_count = mean(ga_counts) if ga_counts else None
+        best_ga = max(
+            ga_rows,
+            key=lambda row: (
+                float(row["score"]) if row["score"] is not None else float("-inf"),
+                -float(row["computation_time_seconds"]),
+            ),
+            default=None,
+        )
+        scenarios.append({
+            "scenario_id": scenario_id,
+            "pipe_id": exhaustive["pipe_id"],
+            "leak_area": exhaustive["leak_area"],
+            "failure_minimum_service_availability": exhaustive["failure_minimum_service_availability"],
+            "failure_total_leakage_volume": exhaustive["failure_total_leakage_volume"],
+            "baseline_score": baseline["score"],
+            "exhaustive_score": exhaustive["score"],
+            "ga_mean_score": mean(ga_scores) if ga_scores else None,
+            "ga_best_score": max(ga_scores) if ga_scores else None,
+            "ga_best_seed": (best_ga or {}).get("seed"),
+            "ga_mean_score_gap": mean(ga_gaps) if ga_gaps else None,
+            "ga_maximum_score_gap": max(ga_gaps) if ga_gaps else None,
+            "ga_global_optimum_hit_rate": (
+                sum(bool(row["found_global_optimum"]) for row in ga_rows) / len(ga_rows)
+                if ga_rows else None
+            ),
+            "ga_within_one_point_rate": (
+                sum(gap <= 1.0 for gap in ga_gaps) / len(ga_gaps)
+                if ga_gaps else None
+            ),
+            "exhaustive_evaluated_count": exhaustive["evaluated_count"],
+            "ga_mean_evaluated_count": mean_ga_count,
+            "candidate_reduction_rate": (
+                1 - mean_ga_count / exhaustive_count
+                if mean_ga_count is not None and exhaustive_count > 0 else None
+            ),
+            "exhaustive_time_seconds": exhaustive_time,
+            "ga_mean_time_seconds": mean_ga_time,
+            "ga_speedup": (
+                exhaustive_time / mean_ga_time
+                if mean_ga_time is not None and mean_ga_time > 0 else None
+            ),
+        })
+    return scenarios
+
+
+def summarize_evaluation(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    ga_rows = [row for row in rows if row["method"] == "genetic_algorithm"]
+    gaps = [float(row["score_gap_to_exhaustive"]) for row in ga_rows if row["score_gap_to_exhaustive"] is not None]
+    scenarios = summarize_scenarios(rows)
+    speedups = [float(item["ga_speedup"]) for item in scenarios if item["ga_speedup"] is not None]
+    reductions = [float(item["candidate_reduction_rate"]) for item in scenarios if item["candidate_reduction_rate"] is not None]
+    return {
+        "overall": {
+            "scenario_count": len(scenarios),
+            "ga_run_count": len(ga_rows),
+            "mean_score_gap": mean(gaps) if gaps else None,
+            "maximum_score_gap": max(gaps) if gaps else None,
+            "global_optimum_hit_rate": (
+                sum(bool(row["found_global_optimum"]) for row in ga_rows) / len(ga_rows)
+                if ga_rows else None
+            ),
+            "within_one_point_rate": sum(gap <= 1.0 for gap in gaps) / len(gaps) if gaps else None,
+            "mean_speedup": mean(speedups) if speedups else None,
+            "mean_candidate_reduction_rate": mean(reductions) if reductions else None,
+        },
+        "scenarios": scenarios,
+    }
+
+
+def _display(value: Any, digits: int = 3) -> str:
+    return "--" if value is None else f"{float(value):.{digits}f}"
+
+
+def render_markdown_report(result: dict[str, Any]) -> str:
+    config = result["configuration"]
+    methods = result["summary"]
+    evaluation = result["evaluation"]["overall"]
+    scenarios = result["evaluation"]["scenarios"]
+    runtime_mode = result.get("runtime", {}).get("mode", "direct real runner")
+    lines = [
+        "# AquaTwin-X Benchmark Report",
+        "",
+        "## Experiment configuration",
+        "",
+        f"- Network: `{config['network_file']}`",
+        f"- Runtime: `{runtime_mode}`",
+        f"- Scenarios: {config['scenario_count']}",
+        f"- GA seeds: {', '.join(str(seed) for seed in config['seeds'])}",
+        f"- Population / generations: {config['population_size']} / {config['generations']}",
+        f"- Maximum valve actions: {config['max_actions']}",
+        "",
+        "## Method-level results",
+        "",
+        "| Method | Runs | Mean score | Median score | Score SD | Mean time (s) | Optimum hit rate |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for method in ("isolation_baseline", "exhaustive_search", "genetic_algorithm"):
+        item = methods.get(method, {})
+        hit_rate = item.get("global_optimum_hit_rate")
+        lines.append(
+            f"| {method.replace('_', ' ').title()} | {item.get('run_count', 0)} | "
+            f"{_display(item.get('mean_score'))} | {_display(item.get('median_score'))} | "
+            f"{_display(item.get('score_standard_deviation'))} | "
+            f"{_display(item.get('mean_computation_time_seconds'))} | "
+            f"{'--' if hit_rate is None else f'{hit_rate:.1%}'} |"
+        )
+    lines.extend([
+        "",
+        "## GA compared with exhaustive search",
+        "",
+        f"- Mean score gap: {_display(evaluation['mean_score_gap'])} points",
+        f"- Maximum score gap: {_display(evaluation['maximum_score_gap'])} points",
+        f"- Global-optimum hit rate: {_display(evaluation['global_optimum_hit_rate'] * 100 if evaluation['global_optimum_hit_rate'] is not None else None, 1)}%",
+        f"- Within-one-point rate: {_display(evaluation['within_one_point_rate'] * 100 if evaluation['within_one_point_rate'] is not None else None, 1)}%",
+        f"- Mean speedup: {_display(evaluation['mean_speedup'])}x",
+        f"- Mean candidate reduction: {_display(evaluation['mean_candidate_reduction_rate'] * 100 if evaluation['mean_candidate_reduction_rate'] is not None else None, 1)}%",
+        "",
+        "## Scenario-level comparison",
+        "",
+        "| Scenario | Pipe | Leak area | Exhaustive | GA mean | Mean gap | Hit rate | Speedup | Candidate reduction |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+    ])
+    for item in scenarios:
+        lines.append(
+            f"| {item['scenario_id']} | {item['pipe_id']} | {_display(item['leak_area'], 6)} | "
+            f"{_display(item['exhaustive_score'])} | {_display(item['ga_mean_score'])} | "
+            f"{_display(item['ga_mean_score_gap'])} | "
+            f"{_display(item['ga_global_optimum_hit_rate'] * 100 if item['ga_global_optimum_hit_rate'] is not None else None, 1)}% | "
+            f"{_display(item['ga_speedup'])}x | "
+            f"{_display(item['candidate_reduction_rate'] * 100 if item['candidate_reduction_rate'] is not None else None, 1)}% |"
+        )
+    lines.extend([
+        "",
+        "> Results are generated from the configured runtime. Demo-mode outputs are synthetic and must not be cited as hydraulic evidence.",
+        "",
+    ])
+    return "\n".join(lines)
+
+
+def write_results(result: dict[str, Any], output_dir: str | Path) -> tuple[Path, Path, Path, Path]:
     target = Path(output_dir).resolve()
     target.mkdir(parents=True, exist_ok=True)
     json_path = target / "benchmark_results.json"
     csv_path = target / "benchmark_runs.csv"
+    summary_path = target / "benchmark_summary.csv"
+    report_path = target / "benchmark_report.md"
     json_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     rows = result["runs"]
     if rows:
@@ -163,7 +324,14 @@ def write_results(result: dict[str, Any], output_dir: str | Path) -> tuple[Path,
             writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
             writer.writeheader()
             writer.writerows(rows)
-    return json_path, csv_path
+    scenario_rows = result["evaluation"]["scenarios"]
+    if scenario_rows:
+        with summary_path.open("w", encoding="utf-8-sig", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(scenario_rows[0]))
+            writer.writeheader()
+            writer.writerows(scenario_rows)
+    report_path.write_text(render_markdown_report(result), encoding="utf-8")
+    return json_path, csv_path, summary_path, report_path
 
 
 def run_benchmark(
@@ -276,7 +444,13 @@ def run_benchmark(
         "scenarios": scenario_payloads,
         "runs": rows,
         "summary": summarize_runs(rows),
+        "evaluation": summarize_evaluation(rows),
     }
-    json_path, csv_path = write_results(result, output_dir)
-    result["output_files"] = {"json": str(json_path), "csv": str(csv_path)}
+    json_path, csv_path, summary_path, report_path = write_results(result, output_dir)
+    result["output_files"] = {
+        "json": str(json_path),
+        "csv": str(csv_path),
+        "summary": str(summary_path),
+        "report": str(report_path),
+    }
     return result

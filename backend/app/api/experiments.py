@@ -32,7 +32,7 @@ def start_batch_experiment(
 @router.get("/{job_id}/download")
 def download_batch_result(
     job_id: str,
-    format: Literal["json", "csv"] = "csv",
+    format: Literal["json", "csv", "summary", "report"] = "csv",
     jobs: JobManager = Depends(get_job_manager),
 ) -> FileResponse:
     try:
@@ -49,5 +49,11 @@ def download_batch_result(
     expected_root = (OUTPUT_ROOT / job_id).resolve()
     if expected_root not in path.parents or not path.is_file():
         raise HTTPException(status_code=404, detail="Experiment output file not found")
-    media_type = "application/json" if format == "json" else "text/csv"
+    media_types = {
+        "json": "application/json",
+        "csv": "text/csv",
+        "summary": "text/csv",
+        "report": "text/markdown",
+    }
+    media_type = media_types[format]
     return FileResponse(path, media_type=media_type, filename=path.name)

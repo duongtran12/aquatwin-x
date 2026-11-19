@@ -21,9 +21,11 @@ The complete benchmark performs 12 exhaustive searches and 36 GA runs, so it can
 ```text
 data/benchmark/week8_demo/benchmark_results.json
 data/benchmark/week8_demo/benchmark_runs.csv
+data/benchmark/week8_demo/benchmark_summary.csv
+data/benchmark/week8_demo/benchmark_report.md
 ```
 
-The CSV is ready to import into Excel, pandas or report charts. Each row includes the failure KPI, recovery KPI, objective score, valve actions, evaluated candidate count, computation time and score gap to the exhaustive optimum.
+The raw CSV is ready to import into Excel or pandas. The summary CSV compares GA with exhaustive search per scenario, including score gap, optimum hit rate, speedup and candidate reduction. The Markdown report contains tables and headline results ready to adapt into the evaluation chapter.
 
 Use another reproducible configuration with:
 

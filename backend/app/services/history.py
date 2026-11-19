@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import closing
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
 from threading import Lock
@@ -70,7 +70,7 @@ class RunHistoryStore:
         result: dict[str, Any],
     ) -> dict[str, Any]:
         run_id = uuid4().hex
-        created_at = datetime.now(UTC).isoformat()
+        created_at = datetime.now(timezone.utc).isoformat()
         with self._lock, closing(self._connect()) as connection:
             with connection:
                 connection.execute(
