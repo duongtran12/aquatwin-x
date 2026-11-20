@@ -1,4 +1,6 @@
 import tempfile
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -55,6 +57,45 @@ def test_history_store_filters_archive_fields() -> None:
 
     assert [item["run_id"] for item in filtered] == [expected["run_id"]]
     assert no_matches == []
+
+
+def test_history_store_archives_and_restores_without_deleting_evidence() -> None:
+    with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+        store = RunHistoryStore(Path(directory) / "history.db")
+        saved = store.save("failure", "network_a", "P1", "demo", {}, sample_result())
+
+        archived = store.set_archived(saved["run_id"], True)
+        active_rows = store.list()
+        archived_rows = store.list(archived=True)
+        preserved = store.get(saved["run_id"])
+        restored = store.set_archived(saved["run_id"], False)
+
+    assert archived["archived"] is True
+    assert active_rows == []
+    assert [item["run_id"] for item in archived_rows] == [saved["run_id"]]
+    assert preserved["result"] == sample_result()
+    assert restored["archived"] is False
+
+
+def test_history_store_migrates_legacy_database() -> None:
+    with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+        database = Path(directory) / "legacy.db"
+        with closing(sqlite3.connect(database)) as connection:
+            connection.execute(
+                """
+                CREATE TABLE run_history (
+                    run_id TEXT PRIMARY KEY, run_type TEXT NOT NULL,
+                    network_id TEXT NOT NULL, pipe_id TEXT, runtime_mode TEXT NOT NULL,
+                    created_at TEXT NOT NULL, summary_json TEXT NOT NULL,
+                    result_json TEXT NOT NULL
+                )
+                """
+            )
+            connection.commit()
+        store = RunHistoryStore(database)
+        saved = store.save("failure", "network_a", "P1", "demo", {}, sample_result())
+
+    assert saved["archived"] is False
 
 
 def test_history_api_lists_and_downloads_json_and_csv() -> None:
@@ -157,6 +198,25 @@ def test_history_api_supports_combined_filters() -> None:
     assert [item["run_id"] for item in response.json()] == [expected["run_id"]]
 
 
+def test_history_api_archives_filters_and_restores_runs() -> None:
+    with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+        store = RunHistoryStore(Path(directory) / "history.db")
+        saved = store.save("failure", "network_a", "P1", "demo", {}, sample_result())
+        app.dependency_overrides[get_history_store] = lambda: store
+        client = TestClient(app)
+        archived = client.patch(f"/api/history/{saved['run_id']}/archive")
+        active_listing = client.get("/api/history")
+        archived_listing = client.get("/api/history?archive=archived")
+        restored = client.patch(f"/api/history/{saved['run_id']}/restore")
+        app.dependency_overrides.clear()
+
+    assert archived.status_code == 200
+    assert archived.json()["archived"] is True
+    assert active_listing.json() == []
+    assert archived_listing.json()[0]["run_id"] == saved["run_id"]
+    assert restored.json()["archived"] is False
+
+
 def test_history_analytics_aggregates_recovery_and_runtime_modes() -> None:
     with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
         store = RunHistoryStore(Path(directory) / "history.db")
@@ -189,12 +249,16 @@ def test_history_analytics_aggregates_recovery_and_runtime_modes() -> None:
             {"failure_summary": failure, "best_candidate": {"score": 91.5, "summary": recovery}},
         )
         analytics = store.analytics()
+        archived_run = store.list(run_type="manual_recovery")[0]
+        store.set_archived(archived_run["run_id"], True)
+        active_analytics = store.analytics()
         real_only = store.analytics("real")
     assert analytics["total_runs"] == 2
     assert analytics["runtime_counts"] == {"demo": 1, "real": 1}
     assert analytics["optimization"]["best_score"] == 91.5
     assert analytics["recovery"]["average_leakage_reduction"] == 75.0
     assert analytics["by_pipe"][0]["runs"] == 2
+    assert active_analytics["total_runs"] == 1
     assert real_only["total_runs"] == 1
 
 

@@ -39,13 +39,25 @@ class RunHistoryStore:
                         pipe_id TEXT,
                         runtime_mode TEXT NOT NULL,
                         created_at TEXT NOT NULL,
+                        archived INTEGER NOT NULL DEFAULT 0,
                         summary_json TEXT NOT NULL,
                         result_json TEXT NOT NULL
                     )
                     """
                 )
+                columns = {
+                    row["name"]
+                    for row in connection.execute("PRAGMA table_info(run_history)").fetchall()
+                }
+                if "archived" not in columns:
+                    connection.execute(
+                        "ALTER TABLE run_history ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
+                    )
                 connection.execute(
                     "CREATE INDEX IF NOT EXISTS idx_run_history_created_at ON run_history(created_at DESC)"
+                )
+                connection.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_run_history_archived ON run_history(archived)"
                 )
 
     @staticmethod
@@ -57,6 +69,7 @@ class RunHistoryStore:
             "pipe_id": row["pipe_id"],
             "runtime_mode": row["runtime_mode"],
             "created_at": row["created_at"],
+            "archived": bool(row["archived"]),
             "summary": json.loads(row["summary_json"]),
         }
 
@@ -98,6 +111,7 @@ class RunHistoryStore:
             "pipe_id": pipe_id,
             "runtime_mode": runtime_mode,
             "created_at": created_at,
+            "archived": False,
             "summary": summary,
         }
 
@@ -107,6 +121,7 @@ class RunHistoryStore:
         network_id: str | None = None,
         run_type: str | None = None,
         runtime_mode: str | None = None,
+        archived: bool | None = False,
     ) -> list[dict[str, Any]]:
         conditions = []
         parameters: list[Any] = []
@@ -114,6 +129,7 @@ class RunHistoryStore:
             ("network_id", network_id),
             ("run_type", run_type),
             ("runtime_mode", runtime_mode),
+            ("archived", None if archived is None else int(archived)),
         ):
             if value is not None:
                 conditions.append(f"{column} = ?")
@@ -137,15 +153,26 @@ class RunHistoryStore:
             raise KeyError(run_id)
         return {**self._metadata(row), "result": json.loads(row["result_json"])}
 
+    def set_archived(self, run_id: str, archived: bool) -> dict[str, Any]:
+        with self._lock, closing(self._connect()) as connection:
+            with connection:
+                cursor = connection.execute(
+                    "UPDATE run_history SET archived = ? WHERE run_id = ?",
+                    (int(archived), run_id),
+                )
+                if cursor.rowcount == 0:
+                    raise KeyError(run_id)
+        return self.get(run_id)
+
     @staticmethod
     def _average(values: list[float]) -> float | None:
         return round(mean(values), 6) if values else None
 
     def analytics(self, runtime_mode: str | None = None) -> dict[str, Any]:
-        query = "SELECT * FROM run_history"
+        query = "SELECT * FROM run_history WHERE archived = 0"
         parameters: tuple[Any, ...] = ()
         if runtime_mode is not None:
-            query += " WHERE runtime_mode = ?"
+            query += " AND runtime_mode = ?"
             parameters = (runtime_mode,)
         query += " ORDER BY created_at ASC"
         with closing(self._connect()) as connection:

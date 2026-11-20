@@ -60,12 +60,18 @@ export function getHistory(limit = 20, filters = {}) {
   if (filters.networkId && filters.networkId !== "all") query.set("network_id", filters.networkId);
   if (filters.runType && filters.runType !== "all") query.set("run_type", filters.runType);
   if (filters.runtimeMode && filters.runtimeMode !== "all") query.set("runtime_mode", filters.runtimeMode);
+  if (filters.archiveStatus && filters.archiveStatus !== "active") query.set("archive", filters.archiveStatus);
   return request(`/api/history?${query}`);
 }
 
 
 export function getHistoryItem(runId) {
   return request(`/api/history/${runId}`);
+}
+
+
+export function setHistoryArchived(runId, archived) {
+  return request(`/api/history/${runId}/${archived ? "archive" : "restore"}`, { method: "PATCH" });
 }
 
 

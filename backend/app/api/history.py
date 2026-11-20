@@ -20,9 +20,11 @@ def list_history(
     network_id: str | None = Query(default=None, min_length=1, max_length=100),
     run_type: Literal["failure", "manual_recovery", "optimization"] | None = None,
     runtime_mode: Literal["demo", "real"] | None = None,
+    archive: Literal["active", "archived", "all"] = "active",
     store: RunHistoryStore = Depends(get_history_store),
 ) -> list[dict[str, Any]]:
-    return store.list(limit, network_id, run_type, runtime_mode)
+    archived = {"active": False, "archived": True, "all": None}[archive]
+    return store.list(limit, network_id, run_type, runtime_mode, archived)
 
 
 @router.get("/analytics")
@@ -40,6 +42,28 @@ def get_history_item(
 ) -> dict[str, Any]:
     try:
         return store.get(run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="History item not found") from exc
+
+
+@router.patch("/{run_id}/archive")
+def archive_history_item(
+    run_id: str,
+    store: RunHistoryStore = Depends(get_history_store),
+) -> dict[str, Any]:
+    try:
+        return store.set_archived(run_id, True)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="History item not found") from exc
+
+
+@router.patch("/{run_id}/restore")
+def restore_history_item(
+    run_id: str,
+    store: RunHistoryStore = Depends(get_history_store),
+) -> dict[str, Any]:
+    try:
+        return store.set_archived(run_id, False)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="History item not found") from exc
 

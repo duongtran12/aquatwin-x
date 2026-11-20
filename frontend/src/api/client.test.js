@@ -9,6 +9,7 @@ import {
   historyDownloadUrl,
   importNetwork,
   simulateFailure,
+  setHistoryArchived,
   startOptimization,
   waitForOptimization,
 } from "./client.js";
@@ -44,6 +45,22 @@ test("getHistory serializes only active filters", async () => {
     "http://localhost:8000/api/history?limit=8&network_id=aquatwin_demo&run_type=optimization",
   );
   assert.deepEqual(result, [{ run_id: "run-1" }]);
+});
+
+test("history archive actions use reversible API routes", async () => {
+  const requests = [];
+  globalThis.fetch = async (url, options) => {
+    requests.push([url, options.method]);
+    return jsonResponse({ run_id: "run-1" });
+  };
+
+  await setHistoryArchived("run-1", true);
+  await setHistoryArchived("run-1", false);
+
+  assert.deepEqual(requests, [
+    ["http://localhost:8000/api/history/run-1/archive", "PATCH"],
+    ["http://localhost:8000/api/history/run-1/restore", "PATCH"],
+  ]);
 });
 
 test("getSystemHealth reads release metadata", async () => {

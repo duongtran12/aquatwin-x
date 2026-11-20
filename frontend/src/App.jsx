@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { cancelJob, deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, getSystemHealth, historyDownloadUrl, importNetwork, importValveRegistry, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { cancelJob, deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, getSystemHealth, historyDownloadUrl, importNetwork, importValveRegistry, setHistoryArchived, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import BatchExperiment from "./components/BatchExperiment";
 import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
@@ -26,7 +26,7 @@ function App() {
   const [manualResult, setManualResult] = useState(null);
   const [optimizationResult, setOptimizationResult] = useState(null);
   const [history, setHistory] = useState([]);
-  const [historyFilters, setHistoryFilters] = useState({ networkId: "all", runType: "all", runtimeMode: "all" });
+  const [historyFilters, setHistoryFilters] = useState({ networkId: "all", runType: "all", runtimeMode: "all", archiveStatus: "active" });
   const [analytics, setAnalytics] = useState(null);
   const [analyticsMode, setAnalyticsMode] = useState("all");
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -219,6 +219,24 @@ function App() {
       setError(requestError.message);
     } finally {
       setComparisonBusy(false);
+    }
+  };
+
+  const updateHistoryArchive = async (item) => {
+    setHistoryBusy(item.run_id);
+    setError("");
+    setNotice("");
+    try {
+      await setHistoryArchived(item.run_id, !item.archived);
+      setComparisonIds((current) => current.filter((runId) => runId !== item.run_id));
+      setComparisonItems(null);
+      if (selectedHistory?.run_id === item.run_id) setSelectedHistory(null);
+      await Promise.all([refreshHistory(), refreshAnalytics()]);
+      setNotice(item.archived ? "Run restored to active history." : "Run archived. Its evidence remains available.");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setHistoryBusy("");
     }
   };
 
@@ -448,6 +466,7 @@ function App() {
             <label><span>Network</span><select value={historyFilters.networkId} onChange={(event) => updateHistoryFilter("networkId", event.target.value)}><option value="all">All networks</option>{networks.map((item) => <option value={item.name} key={item.name}>{item.name}</option>)}</select></label>
             <label><span>Run type</span><select value={historyFilters.runType} onChange={(event) => updateHistoryFilter("runType", event.target.value)}><option value="all">All run types</option><option value="failure">Failure</option><option value="manual_recovery">Manual recovery</option><option value="optimization">AI recovery</option></select></label>
             <label><span>Runtime</span><select value={historyFilters.runtimeMode} onChange={(event) => updateHistoryFilter("runtimeMode", event.target.value)}><option value="all">All modes</option><option value="real">Real WNTR</option><option value="demo">Demo</option></select></label>
+            <label><span>Archive</span><select value={historyFilters.archiveStatus} onChange={(event) => updateHistoryFilter("archiveStatus", event.target.value)}><option value="active">Active runs</option><option value="archived">Archived runs</option><option value="all">All runs</option></select></label>
             <strong>{history.length} matching runs</strong>
           </div>
           <div className="history-compare-bar">
@@ -458,13 +477,13 @@ function App() {
             <div className="history-table">
               <div className="history-row history-row--head"><span>Run</span><span>Pipe</span><span>Mode</span><span>Result</span><span>Created</span><span>Actions</span></div>
               {history.map((item) => (
-                <div className="history-row" key={item.run_id}>
+                <div className={item.archived ? "history-row history-row--archived" : "history-row"} key={item.run_id}>
                   <strong>{RUN_LABELS[item.run_type] || item.run_type}</strong>
                   <span>{item.pipe_id || "-"}</span>
                   <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</span>
                   <span>{item.summary.score != null ? `Score ${fixed(item.summary.score, 1)}` : `${item.summary.maximum_affected_nodes ?? 0} affected`}</span>
                   <span>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
-                  <span className="export-links"><button className={comparisonIds.includes(item.run_id) ? "compare-toggle compare-toggle--active" : "compare-toggle"} type="button" onClick={() => toggleHistoryComparison(item.run_id)}>{comparisonIds.includes(item.run_id) ? "Selected" : "Compare"}</button><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : "View"}</button><a href={historyDownloadUrl(item.run_id, "html")} target="_blank" rel="noreferrer">Report</a><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
+                  <span className="export-links"><button className={comparisonIds.includes(item.run_id) ? "compare-toggle compare-toggle--active" : "compare-toggle"} type="button" onClick={() => toggleHistoryComparison(item.run_id)}>{comparisonIds.includes(item.run_id) ? "Selected" : "Compare"}</button><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : "View"}</button><button className="archive-toggle" type="button" onClick={() => updateHistoryArchive(item)} disabled={historyBusy === item.run_id}>{item.archived ? "Restore" : "Archive"}</button><a href={historyDownloadUrl(item.run_id, "html")} target="_blank" rel="noreferrer">Report</a><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
                 </div>
               ))}
             </div>
