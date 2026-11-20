@@ -169,6 +169,8 @@ input[aria-invalid="true"] { border-color: #d36b58; }
 .experiment-runbar strong { color: #65dce0; font-size: 1.4rem; }
 .experiment-runbar span { color: #66858f; font-size: .68rem; }
 .experiment-runbar__actions { display: grid !important; grid-template-columns: 1fr; align-items: stretch !important; gap: 8px !important; }
+.ai-cancel { margin-top: 8px; }
+.ai-progress { margin-top: 12px; }
 .experiment-error { margin: 12px 0 0; color: #f09482; font-size: .7rem; }
 .experiment-progress { margin-top: 16px; }
 .experiment-progress div { display: flex; justify-content: space-between; margin-bottom: 7px; color: #75929c; font-size: .68rem; }

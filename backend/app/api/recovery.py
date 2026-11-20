@@ -17,6 +17,11 @@ def optimize_recovery(
     service: AquaTwinService = Depends(get_aquatwin_service),
     jobs: JobManager = Depends(get_job_manager),
 ) -> dict[str, Any]:
+    if request.algorithm == "ga":
+        return jobs.submit_progress(
+            lambda job_id, report: service.optimize(request, report),
+            request.generations,
+        )
     return jobs.submit(lambda: service.optimize(request))
 
 

@@ -55,6 +55,30 @@ class GeneticOptimizerTests(unittest.TestCase):
 
         self.assertTrue(all(sum(chromosome) <= 2 for chromosome in evaluated))
 
+    def test_reports_progress_after_each_generation(self) -> None:
+        updates = []
+        optimizer = GeneticOptimizer(
+            gene_count=4,
+            evaluator=lambda chromosome: {
+                "feasible": True,
+                "score": float(sum(chromosome)),
+            },
+            config=GeneticConfig(
+                population_size=6,
+                generations=4,
+                max_actions=2,
+                seed=3,
+            ),
+        )
+
+        optimizer.optimize(lambda completed, total, message: updates.append(
+            (completed, total, message)
+        ))
+
+        self.assertEqual(len(updates), 4)
+        self.assertEqual(updates[0], (1, 4, "Generation 1 of 4"))
+        self.assertEqual(updates[-1], (4, 4, "Generation 4 of 4"))
+
 
 if __name__ == "__main__":
     unittest.main()

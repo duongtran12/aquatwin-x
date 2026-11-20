@@ -38,7 +38,17 @@ def test_targeted_isolation_reduces_demo_leakage() -> None:
 
 def test_demo_ga_has_dashboard_compatible_history() -> None:
     registry = load_valve_registry(VALVES)
-    result = run_demo_optimization(NETWORK, scenario(), registry, generations=8)
+    progress = []
+    result = run_demo_optimization(
+        NETWORK,
+        scenario(),
+        registry,
+        generations=8,
+        progress_callback=lambda completed, total, message: progress.append(
+            (completed, total, message)
+        ),
+    )
     assert result["best_candidate"]["score"] > 0
     assert len(result["history"]) == 8
     assert result["history"][-1]["best_score"] == result["best_candidate"]["score"]
+    assert progress[-1] == (8, 8, "Generation 8 of 8")

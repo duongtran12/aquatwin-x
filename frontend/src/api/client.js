@@ -111,12 +111,15 @@ export function startOptimization(networkId, scenario, algorithm = "ga") {
 export async function waitForOptimization(jobId, onStatus) {
   for (let attempt = 0; attempt < 180; attempt += 1) {
     const job = await request(`/api/jobs/${jobId}`);
-    onStatus?.(job.status);
+    onStatus?.(job);
     if (job.status === "completed") {
       return request(`/api/results/${jobId}`);
     }
     if (job.status === "failed") {
       throw new Error(job.error || "Optimization failed");
+    }
+    if (job.status === "cancelled") {
+      throw new Error("AI recovery cancelled");
     }
     await new Promise((resolve) => window.setTimeout(resolve, 1000));
   }

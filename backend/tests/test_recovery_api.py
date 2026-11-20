@@ -10,7 +10,9 @@ from backend.app.services.jobs import JobManager
 
 
 class FakeOptimizationService:
-    def optimize(self, request: Any) -> dict[str, Any]:
+    def optimize(self, request: Any, progress_callback=None) -> dict[str, Any]:
+        if progress_callback is not None:
+            progress_callback(request.generations, request.generations, "Completed")
         return {
             "algorithm": request.algorithm,
             "best_candidate": {"score": 92.5},
@@ -50,6 +52,8 @@ def test_submits_and_reads_optimization_result() -> None:
     )
 
     assert response.status_code == 202
+    assert response.json()["cancellable"] is True
+    assert response.json()["progress"]["total_steps"] == 20
     job_id = response.json()["job_id"]
     for _ in range(100):
         status = client.get(f"/api/jobs/{job_id}").json()["status"]

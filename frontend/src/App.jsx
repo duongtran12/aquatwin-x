@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, importNetwork, importValveRegistry, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { cancelJob, deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, importNetwork, importValveRegistry, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import BatchExperiment from "./components/BatchExperiment";
 import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
@@ -29,7 +29,7 @@ function App() {
   const [selectedHistory, setSelectedHistory] = useState(null);
   const [historyBusy, setHistoryBusy] = useState("");
   const [busy, setBusy] = useState("");
-  const [jobStatus, setJobStatus] = useState("");
+  const [optimizationJob, setOptimizationJob] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [networkImportBusy, setNetworkImportBusy] = useState(false);
@@ -135,13 +135,23 @@ function App() {
   }, "Manual recovery evaluated and saved to history.");
 
   const runAiRecovery = () => execute("optimization", async () => {
-    setJobStatus("queued");
+    setOptimizationJob({ status: "queued", progress: { percent: 0, message: "Waiting to start" } });
     const job = await startOptimization(networkId, scenarioPayload());
-    setOptimizationResult(await waitForOptimization(job.job_id, setJobStatus));
+    setOptimizationJob(job);
+    setOptimizationResult(await waitForOptimization(job.job_id, setOptimizationJob));
     setManualResult(null);
-    setJobStatus("completed");
     await Promise.all([refreshHistory(), refreshAnalytics()]);
   }, "AI recovery completed and saved to history.");
+
+  const cancelOptimization = async () => {
+    if (!optimizationJob?.job_id || busy !== "optimization") return;
+    setError("");
+    try {
+      setOptimizationJob(await cancelJob(optimizationJob.job_id));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
 
   const openHistory = async (runId) => {
     setHistoryBusy(runId);
@@ -330,7 +340,9 @@ function App() {
             <div className="panel-heading"><div><p className="section-label">AI RECOVERY</p><h2>Genetic optimization</h2></div><span className="ai-badge">GA</span></div>
             <p className="panel-copy">Search up to two valve operations for the best balance of service continuity, pressure and leakage.</p>
             <dl className="algorithm-specs"><div><dt>Population</dt><dd>20</dd></div><div><dt>Generations</dt><dd>20</dd></div><div><dt>Action limit</dt><dd>2</dd></div></dl>
-            <button className="primary-button" type="button" disabled={Boolean(busy) || !failureSummary} onClick={runAiRecovery}>{busy === "optimization" ? `Optimizing · ${jobStatus}` : "Find optimal recovery"}</button>
+            <button className="primary-button" type="button" disabled={Boolean(busy) || !failureSummary} onClick={runAiRecovery}>{busy === "optimization" ? `Optimizing · ${fixed(optimizationJob?.progress?.percent, 0)}%` : "Find optimal recovery"}</button>
+            {busy === "optimization" && optimizationJob?.cancellable && <button className="secondary-button ai-cancel" type="button" onClick={cancelOptimization} disabled={optimizationJob.status === "cancelling"}>{optimizationJob.status === "cancelling" ? "Cancelling..." : "Cancel optimization"}</button>}
+            {busy === "optimization" && optimizationJob?.progress && <div className="experiment-progress ai-progress"><div><span>{optimizationJob.progress.message || optimizationJob.status}</span><strong>{fixed(optimizationJob.progress.percent, 0)}%</strong></div><progress max="100" value={optimizationJob.progress.percent || 0} /></div>}
             {optimizationResult?.best_candidate && <div className="best-score"><span>Best solution score</span><strong>{fixed(optimizationResult.best_candidate.score, 1)}</strong><small>{optimizationResult.unique_evaluated_count} unique candidates evaluated</small></div>}
           </article>
         </section>

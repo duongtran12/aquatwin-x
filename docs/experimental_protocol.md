@@ -58,4 +58,4 @@ Run its predefined seven-pipe test matrix from the command line:
 python -m experiments.cli --config experiments/configs/benchmark_12node.json --output-dir data/benchmark/benchmark_12node
 ```
 
-The same batch can be configured in the dashboard under **Batch Experiments**. The API runs it as a background job, exposes progress, and provides immutable JSON and CSV downloads. Results labeled `demo` are synthetic interface checks and must not be cited as hydraulic evidence.
+The same batch can be configured in the dashboard under **Batch Experiments**. The API runs it as a background job, exposes progress, supports cooperative cancellation between method runs, and provides immutable JSON and CSV downloads. Genetic AI recovery also reports progress after every generation and can be cancelled safely from the dashboard. Results labeled `demo` are synthetic interface checks and must not be cited as hydraulic evidence.

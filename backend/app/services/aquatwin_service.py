@@ -419,7 +419,11 @@ class AquaTwinService:
             result,
         )
 
-    def optimize(self, request: OptimizationRequest) -> dict[str, Any]:
+    def optimize(
+        self,
+        request: OptimizationRequest,
+        progress_callback: Callable[[int, int, str], None] | None = None,
+    ) -> dict[str, Any]:
         network_path = self._network_path(request.network_id)
         scenario = request.scenario.to_domain()
         registry = self._valve_registry(request.network_id)
@@ -438,6 +442,7 @@ class AquaTwinService:
                 registry,
                 config=request.to_genetic_config(),
                 top_k=request.top_k,
+                progress_callback=progress_callback,
             )
 
         result = self._execute(
@@ -451,6 +456,7 @@ class AquaTwinService:
                 seed=request.seed,
                 max_actions=request.max_actions,
                 top_k=request.top_k,
+                progress_callback=progress_callback,
             ),
         )
         return self._record_result(

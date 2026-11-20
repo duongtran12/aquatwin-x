@@ -1,6 +1,6 @@
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Callable
 
 from optimization.baseline import build_isolation_baseline
 from optimization.genetic import Chromosome, GeneticConfig, GeneticOptimizer
@@ -17,6 +17,7 @@ def run_genetic_search(
     config: GeneticConfig | None = None,
     top_k: int = 5,
     weights: ObjectiveWeights | None = None,
+    progress_callback: Callable[[int, int, str], None] | None = None,
 ) -> dict[str, Any]:
     if top_k <= 0:
         raise ValueError("top_k phải lớn hơn 0")
@@ -54,7 +55,7 @@ def run_genetic_search(
         config=ga_config,
         seed_chromosomes=[baseline_chromosome],
     )
-    result = optimizer.optimize()
+    result = optimizer.optimize(progress_callback)
     evaluations = list(result["evaluations"].values())
     feasible = [evaluation for evaluation in evaluations if evaluation["feasible"]]
     feasible.sort(

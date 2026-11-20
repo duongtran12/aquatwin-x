@@ -2,7 +2,7 @@ import math
 from collections import defaultdict, deque
 from math import comb
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from simulation.engine.inp_inspector import inspect_inp, read_inp_elements
 from simulation.engine.metrics import summarize_failure_steps
@@ -258,6 +258,7 @@ def run_demo_optimization(
     seed: int = 42,
     max_actions: int = 2,
     top_k: int = 5,
+    progress_callback: Callable[[int, int, str], None] | None = None,
 ) -> dict[str, Any]:
     pipe_valves = sorted(
         [valve for valve in registry.valves if valve.link_id == scenario.pipe_id],
@@ -297,6 +298,12 @@ def run_demo_optimization(
                 "unique_evaluated_count": min(38, 10 + generation * 2),
             }
         )
+        if progress_callback is not None:
+            progress_callback(
+                generation + 1,
+                generations,
+                f"Generation {generation + 1} of {generations}",
+            )
     return {
         "algorithm": "demo_genetic_algorithm",
         "scenario": scenario.to_dict(),

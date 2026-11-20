@@ -135,7 +135,10 @@ class GeneticOptimizer:
                 genes[index] = 1 - genes[index]
         return self._repair(tuple(genes))
 
-    def optimize(self) -> dict[str, Any]:
+    def optimize(
+        self,
+        progress_callback: Callable[[int, int, str], None] | None = None,
+    ) -> dict[str, Any]:
         population = self._initial_population()
         history = []
         best_chromosome: Chromosome | None = None
@@ -167,6 +170,12 @@ class GeneticOptimizer:
                     "unique_evaluated_count": len(self.cache),
                 }
             )
+            if progress_callback is not None:
+                progress_callback(
+                    generation + 1,
+                    self.config.generations,
+                    f"Generation {generation + 1} of {self.config.generations}",
+                )
 
             if generation == self.config.generations - 1:
                 break
