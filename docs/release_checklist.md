@@ -24,8 +24,8 @@
 
 ## Trước khi nộp
 
-- [ ] Chạy `python -m pytest -q` trên commit cuối.
-- [ ] Chạy `npm test` và `npm run build` trong `frontend`.
+- [x] Chạy `python -m pytest -q` trên commit cuối: 67 tests passed.
+- [x] Chạy `npm test` và `npm run build` trong `frontend`: 19 tests passed, build thành công.
 - [ ] Xác nhận GitHub Actions xanh.
 - [ ] Chụp ảnh theo [demo_guide.md](demo_guide.md).
 - [ ] Tải và lưu artifact benchmark cùng báo cáo.

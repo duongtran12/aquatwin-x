@@ -2,7 +2,7 @@
 
 [![AquaTwin-X CI](https://github.com/duongtran12/aquatwin-x/actions/workflows/ci.yml/badge.svg)](https://github.com/duongtran12/aquatwin-x/actions/workflows/ci.yml)
 
-Phiên bản sản phẩm hiện tại: **0.1.0**. Xem các mốc đã hoàn thành trong [CHANGELOG.md](CHANGELOG.md).
+Phiên bản sản phẩm hoàn chỉnh: **1.0.0**. Xem các mốc đã hoàn thành trong [CHANGELOG.md](CHANGELOG.md).
 
 Tài liệu bàn giao gồm [kiến trúc](docs/architecture.md), [kịch bản demo](docs/demo_guide.md) và [checklist nghiệm thu](docs/release_checklist.md).
 

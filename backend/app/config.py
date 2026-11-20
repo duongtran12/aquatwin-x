@@ -10,7 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     aquatwin_runtime_mode: Literal["auto", "real", "demo"] = "auto"
-    aquatwin_version: str = "0.1.0"
+    aquatwin_version: str = "1.0.0"
     aquatwin_build_commit: str = "development"
     aquatwin_cors_origins: str = "http://localhost:5173"
 

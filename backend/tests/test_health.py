@@ -11,7 +11,7 @@ def test_health_check() -> None:
 
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
-    assert response.json()["version"] == "0.1.0"
+    assert response.json()["version"] == "1.0.0"
     assert response.json()["build_commit"] == "development"
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
@@ -48,7 +48,7 @@ def test_root_exposes_release_metadata() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json()["version"] == "0.1.0"
+    assert response.json()["version"] == "1.0.0"
     assert response.json()["build_commit"] == "development"
     assert response.json()["docs"] == "/docs"
 
@@ -59,5 +59,5 @@ def test_runtime_health_check_exposes_effective_mode() -> None:
     assert response.status_code == 200
     assert response.json()["runtime"]["effective_mode"] in {"real", "demo", "unavailable"}
     assert "wntr_available" in response.json()["runtime"]
-    assert response.json()["version"] == "0.1.0"
+    assert response.json()["version"] == "1.0.0"
 

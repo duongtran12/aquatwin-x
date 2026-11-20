@@ -66,13 +66,13 @@ test("history archive actions use reversible API routes", async () => {
 test("getSystemHealth reads release metadata", async () => {
   globalThis.fetch = async () => jsonResponse({
     status: "ok",
-    version: "0.1.0",
+    version: "1.0.0",
     build_commit: "abc1234",
   });
 
   const health = await getSystemHealth();
 
-  assert.equal(health.version, "0.1.0");
+  assert.equal(health.version, "1.0.0");
   assert.equal(health.build_commit, "abc1234");
 });
 
