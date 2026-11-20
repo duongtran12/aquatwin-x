@@ -1,6 +1,12 @@
 name: AquaTwin-X Full Benchmark
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/benchmark.yml
+      - experiments/configs/week8_demo.json
   workflow_dispatch:
     inputs:
       profile:
@@ -16,16 +22,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: aquatwin-benchmark-${{ inputs.profile }}
+  group: aquatwin-benchmark-${{ inputs.profile || 'demo' }}
   cancel-in-progress: false
 
 jobs:
   real-benchmark:
-    name: Real WNTR ${{ inputs.profile }} benchmark
+    name: Real WNTR ${{ inputs.profile || 'demo' }} benchmark
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
       AQUATWIN_RUNTIME_MODE: real
+      BENCHMARK_PROFILE: ${{ inputs.profile || 'demo' }}
       PYTHONUTF8: "1"
 
     steps:
@@ -46,7 +53,7 @@ jobs:
         id: profile
         shell: bash
         run: |
-          if [ "${{ inputs.profile }}" = "extended" ]; then
+          if [ "$BENCHMARK_PROFILE" = "extended" ]; then
             echo "config=experiments/configs/benchmark_12node.json" >> "$GITHUB_OUTPUT"
             echo "output=data/benchmark/benchmark_12node" >> "$GITHUB_OUTPUT"
           else
@@ -94,13 +101,43 @@ jobs:
           ):
               path = root / filename
               assert path.is_file() and path.stat().st_size > 0
-          print(json.dumps(result["evaluation"]["overall"], indent=2))
+          overall = result["evaluation"]["overall"]
+          print(json.dumps(overall, indent=2))
+
+          def number(value, digits=3):
+              return "-" if value is None else f"{float(value):.{digits}f}"
+
+          def percent(value):
+              return "-" if value is None else f"{float(value) * 100:.1f}%"
+
+          lines = [
+              "# AquaTwin-X Real WNTR Benchmark",
+              "",
+              f"- Profile: `{os.environ['BENCHMARK_PROFILE']}`",
+              f"- Scenarios: **{result['configuration']['scenario_count']}**",
+              f"- GA runs evaluated: **{overall['ga_run_count']}**",
+              "",
+              "| Metric | Result |",
+              "| --- | ---: |",
+              f"| Global optimum hit rate | {percent(overall.get('global_optimum_hit_rate'))} |",
+              f"| Mean score gap | {number(overall.get('mean_score_gap'))} |",
+              f"| Maximum score gap | {number(overall.get('maximum_score_gap'))} |",
+              f"| Within-one-point rate | {percent(overall.get('within_one_point_rate'))} |",
+              f"| Mean speedup | {number(overall.get('mean_speedup'), 2)}x |",
+              f"| Mean candidate reduction | {percent(overall.get('mean_candidate_reduction_rate'))} |",
+              "",
+              "The downloadable artifact contains JSON, raw CSV, summary CSV, and Markdown evidence.",
+              "",
+          ]
+          summary = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          with summary.open("a", encoding="utf-8") as stream:
+              stream.write("\n".join(lines))
           PY
 
       - name: Upload benchmark evidence
         uses: actions/upload-artifact@v4
         with:
-          name: aquatwin-${{ inputs.profile }}-benchmark-${{ github.sha }}
+          name: aquatwin-${{ inputs.profile || 'demo' }}-benchmark-${{ github.sha }}
           path: ${{ steps.profile.outputs.output }}/*
           if-no-files-found: error
           retention-days: 90

@@ -28,9 +28,9 @@ The same run also publishes `real-wntr-benchmark-<commit>`. It is a small contin
 
 ## Full experimental benchmark
 
-Open **Actions > AquaTwin-X Full Benchmark > Run workflow** and choose:
+The workflow automatically runs the real-WNTR `demo` profile whenever its workflow definition or Week 8 configuration changes. You can also open **Actions > AquaTwin-X Full Benchmark > Run workflow** and choose:
 
 - `demo`: the complete six-pipe demonstration matrix.
 - `extended`: the seven-pipe matrix on the 12-junction benchmark network.
 
-The workflow requires real WNTR, validates every evidence file and retains the downloadable artifact for 90 days. Use the full artifact, rather than demo-mode dashboard values, for experimental tables and conclusions.
+The workflow requires real WNTR, validates every evidence file, publishes the main GA quality and efficiency metrics in the run summary, and retains the downloadable artifact for 90 days. Use the full artifact, rather than demo-mode dashboard values, for experimental tables and conclusions.
