@@ -50,8 +50,12 @@ export function deleteNetwork(networkId) {
 }
 
 
-export function getHistory(limit = 12) {
-  return request(`/api/history?limit=${limit}`);
+export function getHistory(limit = 20, filters = {}) {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (filters.networkId && filters.networkId !== "all") query.set("network_id", filters.networkId);
+  if (filters.runType && filters.runType !== "all") query.set("run_type", filters.runType);
+  if (filters.runtimeMode && filters.runtimeMode !== "all") query.set("runtime_mode", filters.runtimeMode);
+  return request(`/api/history?${query}`);
 }
 
 

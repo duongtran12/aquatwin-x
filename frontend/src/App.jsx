@@ -23,6 +23,7 @@ function App() {
   const [manualResult, setManualResult] = useState(null);
   const [optimizationResult, setOptimizationResult] = useState(null);
   const [history, setHistory] = useState([]);
+  const [historyFilters, setHistoryFilters] = useState({ networkId: "all", runType: "all", runtimeMode: "all" });
   const [analytics, setAnalytics] = useState(null);
   const [analyticsMode, setAnalyticsMode] = useState("all");
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -63,8 +64,8 @@ function App() {
   const optimizerValid = optimizerErrors.length === 0;
 
   const refreshHistory = useCallback(() => (
-    getHistory().then(setHistory).catch((requestError) => setError(requestError.message))
-  ), []);
+    getHistory(20, historyFilters).then(setHistory).catch((requestError) => setError(requestError.message))
+  ), [historyFilters]);
 
   const refreshAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
@@ -79,6 +80,9 @@ function App() {
 
   useEffect(() => {
     getNetworks().then(setNetworks).catch((requestError) => setError(requestError.message));
+  }, []);
+
+  useEffect(() => {
     refreshHistory();
   }, [refreshHistory]);
 
@@ -171,6 +175,10 @@ function App() {
   const updateOptimizerConfig = (field, value) => {
     setOptimizerConfig((current) => ({ ...current, [field]: Number(value) }));
     setOptimizationResult(null);
+  };
+
+  const updateHistoryFilter = (field, value) => {
+    setHistoryFilters((current) => ({ ...current, [field]: value }));
   };
 
   const openHistory = async (runId) => {
@@ -392,6 +400,12 @@ function App() {
             <div><p className="section-label">RUN ARCHIVE</p><h2>Recent simulations</h2></div>
             <button className="text-button" type="button" onClick={refreshHistory}>Refresh</button>
           </div>
+          <div className="history-filters">
+            <label><span>Network</span><select value={historyFilters.networkId} onChange={(event) => updateHistoryFilter("networkId", event.target.value)}><option value="all">All networks</option>{networks.map((item) => <option value={item.name} key={item.name}>{item.name}</option>)}</select></label>
+            <label><span>Run type</span><select value={historyFilters.runType} onChange={(event) => updateHistoryFilter("runType", event.target.value)}><option value="all">All run types</option><option value="failure">Failure</option><option value="manual_recovery">Manual recovery</option><option value="optimization">AI recovery</option></select></label>
+            <label><span>Runtime</span><select value={historyFilters.runtimeMode} onChange={(event) => updateHistoryFilter("runtimeMode", event.target.value)}><option value="all">All modes</option><option value="real">Real WNTR</option><option value="demo">Demo</option></select></label>
+            <strong>{history.length} matching runs</strong>
+          </div>
           {history.length ? (
             <div className="history-table">
               <div className="history-row history-row--head"><span>Run</span><span>Pipe</span><span>Mode</span><span>Result</span><span>Created</span><span>Actions</span></div>
@@ -406,7 +420,7 @@ function App() {
                 </div>
               ))}
             </div>
-          ) : <p className="empty-state history-empty">No saved runs yet. Start a failure simulation to create the first record.</p>}
+          ) : <p className="empty-state history-empty">No saved runs match the current filters.</p>}
         </section>
       </main>
       {selectedHistory && <HistoryDetail item={selectedHistory} onClose={() => setSelectedHistory(null)} reportUrl={historyDownloadUrl(selectedHistory.run_id, "html")} jsonUrl={historyDownloadUrl(selectedHistory.run_id, "json")} csvUrl={historyDownloadUrl(selectedHistory.run_id, "csv")} />}

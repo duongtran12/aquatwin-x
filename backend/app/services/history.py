@@ -101,12 +101,30 @@ class RunHistoryStore:
             "summary": summary,
         }
 
-    def list(self, limit: int = 20) -> list[dict[str, Any]]:
+    def list(
+        self,
+        limit: int = 20,
+        network_id: str | None = None,
+        run_type: str | None = None,
+        runtime_mode: str | None = None,
+    ) -> list[dict[str, Any]]:
+        conditions = []
+        parameters: list[Any] = []
+        for column, value in (
+            ("network_id", network_id),
+            ("run_type", run_type),
+            ("runtime_mode", runtime_mode),
+        ):
+            if value is not None:
+                conditions.append(f"{column} = ?")
+                parameters.append(value)
+        query = "SELECT * FROM run_history"
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY created_at DESC LIMIT ?"
+        parameters.append(limit)
         with closing(self._connect()) as connection:
-            rows = connection.execute(
-                "SELECT * FROM run_history ORDER BY created_at DESC LIMIT ?",
-                (limit,),
-            ).fetchall()
+            rows = connection.execute(query, parameters).fetchall()
         return [self._metadata(row) for row in rows]
 
     def get(self, run_id: str) -> dict[str, Any]:

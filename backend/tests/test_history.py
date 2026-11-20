@@ -33,6 +33,30 @@ def test_history_store_saves_lists_and_reads_runs() -> None:
     assert item["result"]["summary"]["maximum_affected_nodes"] == 3
 
 
+def test_history_store_filters_archive_fields() -> None:
+    with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+        store = RunHistoryStore(Path(directory) / "history.db")
+        store.save("failure", "network_a", "P1", "demo", {}, sample_result())
+        expected = store.save(
+            "optimization",
+            "network_b",
+            "P2",
+            "real",
+            {"score": 90.0},
+            sample_result(),
+        )
+
+        filtered = store.list(
+            network_id="network_b",
+            run_type="optimization",
+            runtime_mode="real",
+        )
+        no_matches = store.list(network_id="network_a", runtime_mode="real")
+
+    assert [item["run_id"] for item in filtered] == [expected["run_id"]]
+    assert no_matches == []
+
+
 def test_history_api_lists_and_downloads_json_and_csv() -> None:
     with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
         store = RunHistoryStore(Path(directory) / "history.db")
@@ -71,6 +95,21 @@ def test_history_api_returns_not_found() -> None:
         response = TestClient(app).get("/api/history/missing")
         app.dependency_overrides.clear()
     assert response.status_code == 404
+
+
+def test_history_api_supports_combined_filters() -> None:
+    with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+        store = RunHistoryStore(Path(directory) / "history.db")
+        store.save("failure", "network_a", "P1", "demo", {}, sample_result())
+        expected = store.save("optimization", "network_b", "P2", "real", {}, sample_result())
+        app.dependency_overrides[get_history_store] = lambda: store
+        response = TestClient(app).get(
+            "/api/history?network_id=network_b&run_type=optimization&runtime_mode=real"
+        )
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert [item["run_id"] for item in response.json()] == [expected["run_id"]]
 
 
 def test_history_analytics_aggregates_recovery_and_runtime_modes() -> None:

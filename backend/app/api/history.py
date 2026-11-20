@@ -17,9 +17,12 @@ router = APIRouter(prefix="/history", tags=["History"])
 @router.get("")
 def list_history(
     limit: int = Query(default=20, ge=1, le=100),
+    network_id: str | None = Query(default=None, min_length=1, max_length=100),
+    run_type: Literal["failure", "manual_recovery", "optimization"] | None = None,
+    runtime_mode: Literal["demo", "real"] | None = None,
     store: RunHistoryStore = Depends(get_history_store),
 ) -> list[dict[str, Any]]:
-    return store.list(limit)
+    return store.list(limit, network_id, run_type, runtime_mode)
 
 
 @router.get("/analytics")

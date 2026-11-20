@@ -14,9 +14,11 @@ Each record contains the network and pipe identifiers, creation time, runtime mo
 
 ```text
 GET /api/history?limit=20
+GET /api/history?network_id=aquatwin_demo&run_type=optimization&runtime_mode=real
 GET /api/history/{run_id}
 GET /api/history/{run_id}/download?format=json
 GET /api/history/{run_id}/download?format=csv
+GET /api/history/{run_id}/download?format=html
 ```
 
-JSON exports include the complete result. CSV exports contain the metadata and main KPI fields for spreadsheet analysis.
+Archive filters can be combined and are also available in the dashboard. JSON exports include the complete result, CSV exports contain metadata and main KPI fields for spreadsheet analysis, and HTML opens a printable decision report.
