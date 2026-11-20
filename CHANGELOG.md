@@ -2,6 +2,12 @@
 
 All notable AquaTwin-X product milestones are recorded here.
 
+## Unreleased
+
+### Product
+
+- Quick incident presets for small leaks, major leaks and full-day pipe bursts, with editable parameters and automatic stale-result clearing.
+
 ## 0.1.0 - 2026-11-20
 
 ### Product

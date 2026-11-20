@@ -7,6 +7,7 @@ import HistoryDetail from "./components/HistoryDetail";
 import KpiCard from "./components/KpiCard";
 import MetricComparison from "./components/MetricComparison";
 import NetworkMap from "./components/NetworkMap";
+import { findScenarioPreset, SCENARIO_PRESETS } from "./scenarios";
 
 const DEFAULT_NETWORK_ID = "aquatwin_demo";
 const fixed = (value, digits = 2) => Number(value || 0).toFixed(digits);
@@ -54,6 +55,7 @@ function App() {
     return errors;
   }, [scenario]);
   const scenarioValid = scenarioErrors.length === 0;
+  const activeScenarioPreset = useMemo(() => findScenarioPreset(scenario), [scenario]);
   const optimizerErrors = useMemo(() => {
     const errors = [];
     if (!Number.isInteger(optimizerConfig.populationSize) || optimizerConfig.populationSize < 4 || optimizerConfig.populationSize > 100) errors.push("Population must be from 4 to 100.");
@@ -330,6 +332,21 @@ function App() {
 
           <article className="panel scenario-panel" id="scenario">
             <div className="panel-heading"><div><p className="section-label">SCENARIO BUILDER</p><h2>Pipe leak</h2></div><span className="incident-pill">Selected: {selectedPipe}</span></div>
+            <div className="scenario-presets" aria-label="Quick incident scenarios">
+              {SCENARIO_PRESETS.map((preset) => (
+                <button
+                  className={activeScenarioPreset === preset.id ? "scenario-preset scenario-preset--active" : "scenario-preset"}
+                  disabled={Boolean(busy)}
+                  key={preset.id}
+                  onClick={() => setScenario({ ...preset.scenario })}
+                  title={preset.description}
+                  type="button"
+                >
+                  <strong>{preset.label}</strong>
+                  <small>{preset.scenario.leakArea} m²</small>
+                </button>
+              ))}
+            </div>
             <label className="field-label" htmlFor="pipe">Failure pipe</label>
             <select id="pipe" value={selectedPipe} onChange={(event) => setSelectedPipe(event.target.value)}>{pipeLinks.map((link) => <option key={link.id}>{link.id}</option>)}</select>
             <label className="field-label" htmlFor="area">Leak area (m²)</label>

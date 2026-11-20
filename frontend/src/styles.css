@@ -76,6 +76,13 @@ h2 { margin-bottom: 0; color: #e9f7f9; font-size: 1.05rem; letter-spacing: -.018
 .map-tip { margin-left: auto; }
 .scenario-panel { padding: 22px; }
 .incident-pill, .ai-badge { padding: 6px 8px; background: #593d24; color: #ffc477; font-size: .65rem; font-weight: 700; }
+.scenario-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 16px; }
+.scenario-preset { display: grid; gap: 3px; min-width: 0; border: 1px solid #244854; background: #071d26; padding: 8px 6px; color: #7898a2; text-align: left; }
+.scenario-preset strong { overflow: hidden; color: #b4d5d9; font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
+.scenario-preset small { font-size: .56rem; }
+.scenario-preset:hover:not(:disabled) { border-color: #3d8994; background: #0d2b35; }
+.scenario-preset--active { border-color: #52d7d9; background: #123b45; box-shadow: inset 0 -2px #52d7d9; }
+.scenario-preset--active strong { color: #dcffff; }
 .field-label { display: block; margin: 19px 0 7px; color: #7795a0; font-size: .68rem; font-weight: 600; }
 input, select { width: 100%; height: 42px; border: 1px solid #244854; border-radius: 0; outline: none; background: #071d26; padding: 0 12px; color: #dff5f7; }
 input:focus, select:focus { border-color: #4acbd2; box-shadow: 0 0 0 2px rgba(74, 203, 210, .1); }
@@ -273,7 +280,7 @@ input[aria-invalid="true"] { border-color: #d36b58; }
   .dashboard { grid-column: 2; }
   .overview-grid { grid-template-columns: 1fr; }
   .scenario-panel { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; }
-  .scenario-panel .panel-heading, .scenario-panel .scenario-summary, .scenario-panel .validation-message, .scenario-panel button { grid-column: 1 / -1; }
+  .scenario-panel .panel-heading, .scenario-panel .scenario-presets, .scenario-panel .scenario-summary, .scenario-panel .validation-message, .scenario-panel > button { grid-column: 1 / -1; }
 }
 
 @media (max-width: 780px) {
