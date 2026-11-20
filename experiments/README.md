@@ -1,5 +1,13 @@
 # AquaTwin-X Experiments
 
+## Reproducible profiles
+
+- `configs/ci_evidence.json`: bounded real-WNTR evidence executed on every CI push.
+- `configs/week8_demo.json`: complete matrix for the demonstration network.
+- `configs/benchmark_12node.json`: extended matrix for the 12-junction network.
+
+The full profiles can be run without a local WNTR installation through the **AquaTwin-X Full Benchmark** workflow on GitHub Actions. All generated JSON, CSV and Markdown files are uploaded together as an immutable workflow artifact.
+
 This module runs the Week 8 quantitative benchmark. The default configuration contains 12 leak scenarios (six pipes and two leak areas) and evaluates the Genetic Algorithm with three random seeds per scenario.
 
 ## Methods compared

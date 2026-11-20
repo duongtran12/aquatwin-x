@@ -59,6 +59,21 @@ def test_loads_paths_relative_to_config_file() -> None:
     assert config.seeds == (7, 42)
 
 
+def test_ci_evidence_profile_has_bounded_real_matrix() -> None:
+    config = BenchmarkConfig.from_json(
+        PROJECT_ROOT / "experiments" / "configs" / "ci_evidence.json"
+    )
+    scenarios = build_scenarios(config)
+
+    assert config.network_path == NETWORK.resolve()
+    assert config.valve_path == VALVES.resolve()
+    assert config.pipe_ids == ("P2", "P3")
+    assert config.seeds == (7, 42)
+    assert config.population_size == 12
+    assert config.generations == 10
+    assert len(scenarios) == 2
+
+
 def test_runs_benchmark_and_writes_report_files() -> None:
     config = BenchmarkConfig(
         network_path=NETWORK,

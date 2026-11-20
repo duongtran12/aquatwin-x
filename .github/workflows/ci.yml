@@ -18,7 +18,7 @@ jobs:
   backend-real-runtime:
     name: Backend tests and real WNTR smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     env:
       AQUATWIN_RUNTIME_MODE: real
       PYTHONUTF8: "1"
@@ -79,11 +79,47 @@ jobs:
           print("Real WNTR hydraulic smoke scenarios validated.")
           PY
 
+      - name: Run real WNTR benchmark evidence
+        run: |
+          python -m experiments.cli \
+            --config experiments/configs/ci_evidence.json \
+            --output-dir data/benchmark/ci-evidence
+
+      - name: Validate benchmark evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("data/benchmark/ci-evidence")
+          result = json.loads((root / "benchmark_results.json").read_text(encoding="utf-8"))
+          assert result["configuration"]["scenario_count"] == 2
+          assert result["evaluation"]["overall"]["ga_run_count"] == 4
+          assert result["summary"]["genetic_algorithm"]["run_count"] == 4
+          for filename in (
+              "benchmark_results.json",
+              "benchmark_runs.csv",
+              "benchmark_summary.csv",
+              "benchmark_report.md",
+          ):
+              path = root / filename
+              assert path.is_file() and path.stat().st_size > 0
+          print("Real WNTR benchmark evidence validated.")
+          PY
+
       - name: Upload real WNTR evidence
         uses: actions/upload-artifact@v4
         with:
           name: real-wntr-smoke-${{ github.sha }}
           path: data/processed/ci/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload real benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-wntr-benchmark-${{ github.sha }}
+          path: data/benchmark/ci-evidence/*
           if-no-files-found: error
           retention-days: 30
 
