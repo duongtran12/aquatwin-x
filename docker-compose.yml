@@ -7,6 +7,7 @@ services:
       AQUATWIN_RUNTIME_MODE: real
       AQUATWIN_VERSION: ${AQUATWIN_VERSION:-0.1.0}
       AQUATWIN_BUILD_COMMIT: ${AQUATWIN_BUILD_COMMIT:-local}
+      AQUATWIN_CORS_ORIGINS: ${AQUATWIN_CORS_ORIGINS:-http://localhost:5173}
     ports:
       - "8000:8000"
     volumes:

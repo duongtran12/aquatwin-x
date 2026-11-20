@@ -9,6 +9,7 @@ All notable AquaTwin-X product milestones are recorded here.
 - Quick incident presets for small leaks, major leaks and full-day pipe bursts, with editable parameters and automatic stale-result clearing.
 - Side-by-side history comparison with metric-aware highlighting and compatibility warnings.
 - Reversible history archiving with legacy-database migration, archive filters and active-only analytics.
+- Environment-driven CORS policy and baseline HTTP security headers for deployment.
 
 ## 0.1.0 - 2026-11-20
 

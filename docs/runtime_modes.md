@@ -18,6 +18,8 @@ AQUATWIN_RUNTIME_MODE=auto
 
 Restart the FastAPI backend after changing the value.
 
+`AQUATWIN_CORS_ORIGINS` accepts a comma-separated list of allowed dashboard origins. The default is `http://localhost:5173`; set the deployed HTTPS origin explicitly in production.
+
 ## Safety boundary
 
 Every demo response contains:
