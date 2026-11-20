@@ -10,6 +10,7 @@ All notable AquaTwin-X product milestones are recorded here.
 - Side-by-side history comparison with metric-aware highlighting and compatibility warnings.
 - Reversible history archiving with legacy-database migration, archive filters and active-only analytics.
 - Environment-driven CORS policy and baseline HTTP security headers for deployment.
+- End-to-end acceptance coverage for the complete operator decision workflow.
 
 ## 0.1.0 - 2026-11-20
 
