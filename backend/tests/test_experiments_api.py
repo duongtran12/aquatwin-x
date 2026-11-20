@@ -1,7 +1,9 @@
 import csv
+import io
 import json
 from pathlib import Path
 from time import sleep
+from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 
@@ -85,6 +87,7 @@ def test_starts_tracks_and_downloads_batch_experiment(tmp_path) -> None:
     download = client.get(f"/api/experiments/{job_id}/download?format=csv")
     summary_download = client.get(f"/api/experiments/{job_id}/download?format=summary")
     report_download = client.get(f"/api/experiments/{job_id}/download?format=report")
+    zip_download = client.get(f"/api/experiments/{job_id}/download?format=zip")
     archive = client.get("/api/experiments").json()
     archived_result = client.get(f"/api/experiments/{job_id}").json()
     assert job["progress"]["percent"] == 100.0
@@ -94,6 +97,15 @@ def test_starts_tracks_and_downloads_batch_experiment(tmp_path) -> None:
     assert "ga_mean_score" in summary_download.text
     assert report_download.status_code == 200
     assert "Benchmark report" in report_download.text
+    assert zip_download.status_code == 200
+    assert zip_download.headers["content-type"] == "application/zip"
+    with ZipFile(io.BytesIO(zip_download.content)) as archive_file:
+        assert set(archive_file.namelist()) == {
+            "benchmark_results.json",
+            "benchmark_runs.csv",
+            "benchmark_summary.csv",
+            "benchmark_report.md",
+        }
     assert archive[0]["experiment_id"] == job_id
     assert archive[0]["runtime_mode"] == "real"
     assert archive[0]["ga_mean_score"] == 91.5
@@ -103,7 +115,9 @@ def test_starts_tracks_and_downloads_batch_experiment(tmp_path) -> None:
     restarted_manager = JobManager(max_workers=1)
     app.dependency_overrides[get_job_manager] = lambda: restarted_manager
     persistent_download = client.get(f"/api/experiments/{job_id}/download?format=report")
+    persistent_zip = client.get(f"/api/experiments/{job_id}/download?format=zip")
     assert persistent_download.status_code == 200
+    assert persistent_zip.status_code == 200
     assert client.get("/api/experiments/not/a/valid/id").status_code == 404
     restarted_manager.shutdown()
     app.dependency_overrides.clear()

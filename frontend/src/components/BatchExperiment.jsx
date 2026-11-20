@@ -130,7 +130,7 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
         <div><span>Mean GA speedup</span><strong>{evaluation.mean_speedup == null ? "--" : `${fixed(evaluation.mean_speedup, 2)}x`}</strong></div>
         <div><span>Candidate reduction</span><strong>{evaluation.mean_candidate_reduction_rate == null ? "--" : `${fixed(evaluation.mean_candidate_reduction_rate * 100, 1)}%`}</strong></div>
         <div><span>Exhaustive mean time</span><strong>{fixed(exhaustive.mean_computation_time_seconds, 3)}s</strong></div>
-        <div className="experiment-downloads"><a href={experimentDownloadUrl(job.job_id, "csv")}>Raw CSV</a><a href={experimentDownloadUrl(job.job_id, "summary")}>Summary CSV</a><a href={experimentDownloadUrl(job.job_id, "report")}>Report MD</a><a href={experimentDownloadUrl(job.job_id, "json")}>Full JSON</a></div>
+        <div className="experiment-downloads"><a href={experimentDownloadUrl(job.job_id, "zip")}>Evidence ZIP</a><a href={experimentDownloadUrl(job.job_id, "csv")}>Raw CSV</a><a href={experimentDownloadUrl(job.job_id, "summary")}>Summary CSV</a><a href={experimentDownloadUrl(job.job_id, "report")}>Report MD</a><a href={experimentDownloadUrl(job.job_id, "json")}>Full JSON</a></div>
       </div>}
 
       <ExperimentReport result={result} />

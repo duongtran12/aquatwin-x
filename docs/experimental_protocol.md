@@ -48,6 +48,8 @@ Keep the generated JSON as the machine-readable evidence and use the CSV for tab
 
 Each completed batch also produces `benchmark_summary.csv` and `benchmark_report.md`. The summary provides one comparison row per scenario; the Markdown report automatically presents method statistics, GA quality, speedup and candidate-reduction evidence.
 
+From the experiment dashboard, **Evidence ZIP** downloads the complete immutable bundle: full JSON, raw CSV, scenario-summary CSV and Markdown report. Keep this bundle with the matching commit hash when preparing experimental evidence.
+
 ## Extended benchmark network
 
 `aquatwin_benchmark` contains 12 demand junctions, one reservoir, 21 pipes and 42 virtual isolation valves. It provides a larger multi-loop search space than the four-junction demonstration network.

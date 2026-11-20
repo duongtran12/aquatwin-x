@@ -1,10 +1,12 @@
 import json
+from io import BytesIO
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from backend.app.dependencies import get_aquatwin_service, get_job_manager
 from backend.app.schemas.requests import BatchExperimentRequest
@@ -101,9 +103,9 @@ def start_batch_experiment(
 @router.get("/{job_id}/download")
 def download_batch_result(
     job_id: str,
-    format: Literal["json", "csv", "summary", "report"] = "csv",
+    format: Literal["json", "csv", "summary", "report", "zip"] = "csv",
     jobs: JobManager = Depends(get_job_manager),
-) -> FileResponse:
+) -> Response:
     filenames = {
         "json": "benchmark_results.json",
         "csv": "benchmark_runs.csv",
@@ -111,19 +113,36 @@ def download_batch_result(
         "report": "benchmark_report.md",
     }
     directory = _experiment_directory(job_id)
-    archived_path = directory / filenames[format]
-    if archived_path.is_file():
-        media_types = {
-            "json": "application/json",
-            "csv": "text/csv",
-            "summary": "text/csv",
-            "report": "text/markdown",
-        }
-        return FileResponse(
-            archived_path,
-            media_type=media_types[format],
-            filename=archived_path.name,
-        )
+    if format == "zip":
+        archived_files = [directory / filename for filename in filenames.values()]
+        if all(path.is_file() for path in archived_files):
+            stream = BytesIO()
+            with ZipFile(stream, "w", ZIP_DEFLATED) as archive:
+                for path in archived_files:
+                    archive.write(path, arcname=path.name)
+            return Response(
+                content=stream.getvalue(),
+                media_type="application/zip",
+                headers={
+                    "Content-Disposition": (
+                        f'attachment; filename="aquatwin-experiment-{job_id}.zip"'
+                    )
+                },
+            )
+    else:
+        archived_path = directory / filenames[format]
+        if archived_path.is_file():
+            media_types = {
+                "json": "application/json",
+                "csv": "text/csv",
+                "summary": "text/csv",
+                "report": "text/markdown",
+            }
+            return FileResponse(
+                archived_path,
+                media_type=media_types[format],
+                filename=archived_path.name,
+            )
 
     try:
         job = jobs.status(job_id)
