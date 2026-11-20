@@ -4,6 +4,8 @@
 
 Phiên bản sản phẩm hiện tại: **0.1.0**. Xem các mốc đã hoàn thành trong [CHANGELOG.md](CHANGELOG.md).
 
+Tài liệu bàn giao gồm [kiến trúc](docs/architecture.md), [kịch bản demo](docs/demo_guide.md) và [checklist nghiệm thu](docs/release_checklist.md).
+
 AquaTwin-X là hệ thống Digital Twin tích hợp thuật toán tối ưu để mô phỏng sự cố và hỗ trợ lựa chọn phương án phục hồi mạng lưới cấp nước.
 
 ## Mục tiêu sản phẩm

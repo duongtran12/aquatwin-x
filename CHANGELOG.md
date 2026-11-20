@@ -12,6 +12,7 @@ All notable AquaTwin-X product milestones are recorded here.
 - Environment-driven CORS policy and baseline HTTP security headers for deployment.
 - End-to-end acceptance coverage for the complete operator decision workflow.
 - Accurate checking, offline, demo and real-runtime status indicators in the dashboard.
+- Final architecture, demo, screenshot and release handoff documentation.
 
 ## 0.1.0 - 2026-11-20
 
