@@ -171,6 +171,10 @@ input[aria-invalid="true"] { border-color: #d36b58; }
 .experiment-runbar__actions { display: grid !important; grid-template-columns: 1fr; align-items: stretch !important; gap: 8px !important; }
 .ai-cancel { margin-top: 8px; }
 .ai-progress { margin-top: 12px; }
+.optimizer-config { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+.optimizer-config label { display: grid; gap: 5px; color: #7395a0; font-size: .66rem; }
+.optimizer-config input { width: 100%; border: 1px solid #234a56; background: #071f29; color: #e7f5f7; padding: 8px 9px; }
+.optimizer-error { margin: -5px 0 10px; color: #ff8d79; font-size: .68rem; }
 .experiment-error { margin: 12px 0 0; color: #f09482; font-size: .7rem; }
 .experiment-progress { margin-top: 16px; }
 .experiment-progress div { display: flex; justify-content: space-between; margin-bottom: 7px; color: #75929c; font-size: .68rem; }

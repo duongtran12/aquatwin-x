@@ -48,10 +48,10 @@ class ManualRecoveryRequest(FailureSimulationRequest):
 
 class OptimizationRequest(FailureSimulationRequest):
     algorithm: Literal["exhaustive", "ga"] = "ga"
-    max_actions: int = Field(default=2, ge=0)
+    max_actions: int = Field(default=2, ge=0, le=5)
     top_k: int = Field(default=5, ge=1, le=50)
-    population_size: int = Field(default=20, ge=2)
-    generations: int = Field(default=20, ge=1)
+    population_size: int = Field(default=20, ge=2, le=100)
+    generations: int = Field(default=20, ge=1, le=200)
     crossover_rate: float = Field(default=0.8, ge=0, le=1)
     mutation_rate: float = Field(default=0.1, ge=0, le=1)
     tournament_size: int = Field(default=3, ge=2)

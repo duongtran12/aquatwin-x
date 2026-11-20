@@ -87,22 +87,22 @@ export function simulateWhatIf(networkId, scenario, actions) {
 }
 
 
-export function startOptimization(networkId, scenario, algorithm = "ga") {
+export function startOptimization(networkId, scenario, config = {}) {
   return request("/api/recovery/optimize", {
     method: "POST",
     body: JSON.stringify({
       network_id: networkId,
       scenario,
-      algorithm,
-      max_actions: 2,
+      algorithm: "ga",
+      max_actions: config.maxActions ?? 2,
       top_k: 5,
-      population_size: 20,
-      generations: 20,
+      population_size: config.populationSize ?? 20,
+      generations: config.generations ?? 20,
       crossover_rate: 0.8,
       mutation_rate: 0.1,
       tournament_size: 3,
       elite_count: 2,
-      seed: 42,
+      seed: config.seed ?? 42,
     }),
   });
 }

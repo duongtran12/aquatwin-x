@@ -16,6 +16,12 @@ class FakeOptimizationService:
         return {
             "algorithm": request.algorithm,
             "best_candidate": {"score": 92.5},
+            "config": {
+                "population_size": request.population_size,
+                "generations": request.generations,
+                "max_actions": request.max_actions,
+                "seed": request.seed,
+            },
         }
 
 
@@ -42,6 +48,10 @@ def test_submits_and_reads_optimization_result() -> None:
         json={
             "network_id": "aquatwin_demo",
             "algorithm": "ga",
+            "population_size": 12,
+            "generations": 7,
+            "max_actions": 1,
+            "seed": 101,
             "scenario": {
                 "pipe_id": "P3",
                 "leak_area": 0.0005,
@@ -53,7 +63,7 @@ def test_submits_and_reads_optimization_result() -> None:
 
     assert response.status_code == 202
     assert response.json()["cancellable"] is True
-    assert response.json()["progress"]["total_steps"] == 20
+    assert response.json()["progress"]["total_steps"] == 7
     job_id = response.json()["job_id"]
     for _ in range(100):
         status = client.get(f"/api/jobs/{job_id}").json()["status"]
@@ -65,6 +75,12 @@ def test_submits_and_reads_optimization_result() -> None:
     assert result.status_code == 200
     assert result.json()["algorithm"] == "ga"
     assert result.json()["best_candidate"]["score"] == 92.5
+    assert result.json()["config"] == {
+        "population_size": 12,
+        "generations": 7,
+        "max_actions": 1,
+        "seed": 101,
+    }
 
 
 def test_cancels_running_progress_job_through_api() -> None:
@@ -95,4 +111,25 @@ def test_cancels_running_progress_job_through_api() -> None:
     result = client.get(f"/api/results/{job['job_id']}")
     assert result.status_code == 409
     assert result.json()["detail"] == "Job was cancelled"
+
+
+def test_rejects_unsafe_optimization_workload() -> None:
+    response = client.post(
+        "/api/recovery/optimize",
+        json={
+            "network_id": "aquatwin_demo",
+            "algorithm": "ga",
+            "population_size": 101,
+            "generations": 201,
+            "max_actions": 6,
+            "scenario": {
+                "pipe_id": "P3",
+                "leak_area": 0.0005,
+                "start_time": 7200,
+                "end_time": 43200,
+            },
+        },
+    )
+
+    assert response.status_code == 422
 

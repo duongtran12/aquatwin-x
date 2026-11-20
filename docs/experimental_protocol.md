@@ -59,3 +59,5 @@ python -m experiments.cli --config experiments/configs/benchmark_12node.json --o
 ```
 
 The same batch can be configured in the dashboard under **Batch Experiments**. The API runs it as a background job, exposes progress, supports cooperative cancellation between method runs, and provides immutable JSON and CSV downloads. Genetic AI recovery also reports progress after every generation and can be cancelled safely from the dashboard. Results labeled `demo` are synthetic interface checks and must not be cited as hydraulic evidence.
+
+Interactive AI recovery allows the operator to choose the GA population (4-100), generation count (1-200), valve-action limit (1-5), and random seed. Record these parameters with every reported result so that the search can be reproduced.

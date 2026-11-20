@@ -30,6 +30,12 @@ function App() {
   const [historyBusy, setHistoryBusy] = useState("");
   const [busy, setBusy] = useState("");
   const [optimizationJob, setOptimizationJob] = useState(null);
+  const [optimizerConfig, setOptimizerConfig] = useState({
+    populationSize: 20,
+    generations: 20,
+    maxActions: 2,
+    seed: 42,
+  });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [networkImportBusy, setNetworkImportBusy] = useState(false);
@@ -46,6 +52,15 @@ function App() {
     return errors;
   }, [scenario]);
   const scenarioValid = scenarioErrors.length === 0;
+  const optimizerErrors = useMemo(() => {
+    const errors = [];
+    if (!Number.isInteger(optimizerConfig.populationSize) || optimizerConfig.populationSize < 4 || optimizerConfig.populationSize > 100) errors.push("Population must be from 4 to 100.");
+    if (!Number.isInteger(optimizerConfig.generations) || optimizerConfig.generations < 1 || optimizerConfig.generations > 200) errors.push("Generations must be from 1 to 200.");
+    if (!Number.isInteger(optimizerConfig.maxActions) || optimizerConfig.maxActions < 1 || optimizerConfig.maxActions > 5) errors.push("Action limit must be from 1 to 5.");
+    if (!Number.isInteger(optimizerConfig.seed)) errors.push("Seed must be an integer.");
+    return errors;
+  }, [optimizerConfig]);
+  const optimizerValid = optimizerErrors.length === 0;
 
   const refreshHistory = useCallback(() => (
     getHistory().then(setHistory).catch((requestError) => setError(requestError.message))
@@ -136,7 +151,7 @@ function App() {
 
   const runAiRecovery = () => execute("optimization", async () => {
     setOptimizationJob({ status: "queued", progress: { percent: 0, message: "Waiting to start" } });
-    const job = await startOptimization(networkId, scenarioPayload());
+    const job = await startOptimization(networkId, scenarioPayload(), optimizerConfig);
     setOptimizationJob(job);
     setOptimizationResult(await waitForOptimization(job.job_id, setOptimizationJob));
     setManualResult(null);
@@ -151,6 +166,11 @@ function App() {
     } catch (requestError) {
       setError(requestError.message);
     }
+  };
+
+  const updateOptimizerConfig = (field, value) => {
+    setOptimizerConfig((current) => ({ ...current, [field]: Number(value) }));
+    setOptimizationResult(null);
   };
 
   const openHistory = async (runId) => {
@@ -339,8 +359,14 @@ function App() {
           <article className="panel ai-panel">
             <div className="panel-heading"><div><p className="section-label">AI RECOVERY</p><h2>Genetic optimization</h2></div><span className="ai-badge">GA</span></div>
             <p className="panel-copy">Search up to two valve operations for the best balance of service continuity, pressure and leakage.</p>
-            <dl className="algorithm-specs"><div><dt>Population</dt><dd>20</dd></div><div><dt>Generations</dt><dd>20</dd></div><div><dt>Action limit</dt><dd>2</dd></div></dl>
-            <button className="primary-button" type="button" disabled={Boolean(busy) || !failureSummary} onClick={runAiRecovery}>{busy === "optimization" ? `Optimizing · ${fixed(optimizationJob?.progress?.percent, 0)}%` : "Find optimal recovery"}</button>
+            <div className="optimizer-config">
+              <label><span>Population</span><input type="number" min="4" max="100" value={optimizerConfig.populationSize} onChange={(event) => updateOptimizerConfig("populationSize", event.target.value)} disabled={Boolean(busy)} /></label>
+              <label><span>Generations</span><input type="number" min="1" max="200" value={optimizerConfig.generations} onChange={(event) => updateOptimizerConfig("generations", event.target.value)} disabled={Boolean(busy)} /></label>
+              <label><span>Action limit</span><input type="number" min="1" max="5" value={optimizerConfig.maxActions} onChange={(event) => updateOptimizerConfig("maxActions", event.target.value)} disabled={Boolean(busy)} /></label>
+              <label><span>Random seed</span><input type="number" value={optimizerConfig.seed} onChange={(event) => updateOptimizerConfig("seed", event.target.value)} disabled={Boolean(busy)} /></label>
+            </div>
+            {!optimizerValid && <p className="optimizer-error">{optimizerErrors[0]}</p>}
+            <button className="primary-button" type="button" disabled={Boolean(busy) || !failureSummary || !optimizerValid} onClick={runAiRecovery}>{busy === "optimization" ? `Optimizing · ${fixed(optimizationJob?.progress?.percent, 0)}%` : "Find optimal recovery"}</button>
             {busy === "optimization" && optimizationJob?.cancellable && <button className="secondary-button ai-cancel" type="button" onClick={cancelOptimization} disabled={optimizationJob.status === "cancelling"}>{optimizationJob.status === "cancelling" ? "Cancelling..." : "Cancel optimization"}</button>}
             {busy === "optimization" && optimizationJob?.progress && <div className="experiment-progress ai-progress"><div><span>{optimizationJob.progress.message || optimizationJob.status}</span><strong>{fixed(optimizationJob.progress.percent, 0)}%</strong></div><progress max="100" value={optimizationJob.progress.percent || 0} /></div>}
             {optimizationResult?.best_candidate && <div className="best-score"><span>Best solution score</span><strong>{fixed(optimizationResult.best_candidate.score, 1)}</strong><small>{optimizationResult.unique_evaluated_count} unique candidates evaluated</small></div>}
