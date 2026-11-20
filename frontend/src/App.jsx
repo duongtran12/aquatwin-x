@@ -3,6 +3,7 @@ import { cancelJob, deleteNetwork, getHistory, getHistoryAnalytics, getHistoryIt
 import BatchExperiment from "./components/BatchExperiment";
 import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
+import HistoryComparison from "./components/HistoryComparison";
 import HistoryDetail from "./components/HistoryDetail";
 import KpiCard from "./components/KpiCard";
 import MetricComparison from "./components/MetricComparison";
@@ -30,6 +31,9 @@ function App() {
   const [analyticsMode, setAnalyticsMode] = useState("all");
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState(null);
+  const [comparisonIds, setComparisonIds] = useState([]);
+  const [comparisonItems, setComparisonItems] = useState(null);
+  const [comparisonBusy, setComparisonBusy] = useState(false);
   const [historyBusy, setHistoryBusy] = useState("");
   const [busy, setBusy] = useState("");
   const [optimizationJob, setOptimizationJob] = useState(null);
@@ -194,6 +198,27 @@ function App() {
       setError(requestError.message);
     } finally {
       setHistoryBusy("");
+    }
+  };
+
+  const toggleHistoryComparison = (runId) => {
+    setComparisonItems(null);
+    setComparisonIds((current) => {
+      if (current.includes(runId)) return current.filter((item) => item !== runId);
+      return current.length < 2 ? [...current, runId] : [current[1], runId];
+    });
+  };
+
+  const compareHistory = async () => {
+    if (comparisonIds.length !== 2) return;
+    setComparisonBusy(true);
+    setError("");
+    try {
+      setComparisonItems(await Promise.all(comparisonIds.map(getHistoryItem)));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setComparisonBusy(false);
     }
   };
 
@@ -425,6 +450,10 @@ function App() {
             <label><span>Runtime</span><select value={historyFilters.runtimeMode} onChange={(event) => updateHistoryFilter("runtimeMode", event.target.value)}><option value="all">All modes</option><option value="real">Real WNTR</option><option value="demo">Demo</option></select></label>
             <strong>{history.length} matching runs</strong>
           </div>
+          <div className="history-compare-bar">
+            <span><strong>{comparisonIds.length}/2</strong> runs selected for comparison</span>
+            <div><button type="button" onClick={() => { setComparisonIds([]); setComparisonItems(null); }} disabled={!comparisonIds.length}>Clear</button><button type="button" onClick={compareHistory} disabled={comparisonIds.length !== 2 || comparisonBusy}>{comparisonBusy ? "Loading..." : "Compare selected"}</button></div>
+          </div>
           {history.length ? (
             <div className="history-table">
               <div className="history-row history-row--head"><span>Run</span><span>Pipe</span><span>Mode</span><span>Result</span><span>Created</span><span>Actions</span></div>
@@ -435,7 +464,7 @@ function App() {
                   <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</span>
                   <span>{item.summary.score != null ? `Score ${fixed(item.summary.score, 1)}` : `${item.summary.maximum_affected_nodes ?? 0} affected`}</span>
                   <span>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
-                  <span className="export-links"><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : "View"}</button><a href={historyDownloadUrl(item.run_id, "html")} target="_blank" rel="noreferrer">Report</a><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
+                  <span className="export-links"><button className={comparisonIds.includes(item.run_id) ? "compare-toggle compare-toggle--active" : "compare-toggle"} type="button" onClick={() => toggleHistoryComparison(item.run_id)}>{comparisonIds.includes(item.run_id) ? "Selected" : "Compare"}</button><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : "View"}</button><a href={historyDownloadUrl(item.run_id, "html")} target="_blank" rel="noreferrer">Report</a><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
                 </div>
               ))}
             </div>
@@ -443,6 +472,7 @@ function App() {
         </section>
       </main>
       {selectedHistory && <HistoryDetail item={selectedHistory} onClose={() => setSelectedHistory(null)} reportUrl={historyDownloadUrl(selectedHistory.run_id, "html")} jsonUrl={historyDownloadUrl(selectedHistory.run_id, "json")} csvUrl={historyDownloadUrl(selectedHistory.run_id, "csv")} />}
+      {comparisonItems && <HistoryComparison items={comparisonItems} onClose={() => setComparisonItems(null)} />}
     </div>
   );
 }
