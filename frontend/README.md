@@ -26,10 +26,18 @@ To use another API origin, create `frontend/.env`:
 VITE_API_URL=http://localhost:8000
 ```
 
-## Production check
+## Automated checks
 
 ```powershell
+npm test
 npm run build
+```
+
+The test suite verifies request serialization, upload handling, API errors, optimization polling and evidence download URLs. CI runs it before producing the frontend bundle.
+
+Preview the production bundle locally with:
+
+```powershell
 npm run preview
 ```
 
