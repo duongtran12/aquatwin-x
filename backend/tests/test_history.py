@@ -88,6 +88,51 @@ def test_history_api_lists_and_downloads_json_and_csv() -> None:
     assert "aquatwin_demo" in html_report.text
 
 
+def test_optimization_report_includes_reproducibility_settings() -> None:
+    with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+        store = RunHistoryStore(Path(directory) / "history.db")
+        saved = store.save(
+            "optimization",
+            "aquatwin_demo",
+            "P3",
+            "real",
+            {"score": 92.5},
+            {
+                "algorithm": "genetic_algorithm",
+                "scenario": {
+                    "pipe_id": "P3",
+                    "leak_area": 0.0005,
+                    "start_time": 7200,
+                    "end_time": 43200,
+                },
+                "config": {
+                    "population_size": 24,
+                    "generations": 30,
+                    "max_actions": 2,
+                    "seed": 101,
+                    "crossover_rate": 0.8,
+                    "mutation_rate": 0.1,
+                },
+                "best_candidate": {"score": 92.5, "actions": [], "summary": {}},
+            },
+        )
+        app.dependency_overrides[get_history_store] = lambda: store
+        response = TestClient(app).get(
+            f"/api/history/{saved['run_id']}/download?format=html"
+        )
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert "Optimization settings" in response.text
+    assert "genetic_algorithm" in response.text
+    assert "Population" in response.text
+    assert ">24<" in response.text
+    assert "Generations" in response.text
+    assert ">30<" in response.text
+    assert "Random seed" in response.text
+    assert ">101<" in response.text
+
+
 def test_history_api_returns_not_found() -> None:
     with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
         store = RunHistoryStore(Path(directory) / "history.db")

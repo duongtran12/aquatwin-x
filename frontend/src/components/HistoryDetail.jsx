@@ -25,6 +25,16 @@ function HistoryDetail({ item, onClose, jsonUrl, csvUrl, reportUrl }) {
   const recovery = result.recovery?.summary || candidate.summary;
   const actions = result.actions || candidate.actions || [];
   const configuration = result.configuration || result.scenario || {};
+  const optimizationConfig = result.config || {};
+  const optimizationSettings = [
+    ["Algorithm", result.algorithm],
+    ["Population", optimizationConfig.population_size],
+    ["Generations", optimizationConfig.generations],
+    ["Action limit", optimizationConfig.max_actions],
+    ["Random seed", optimizationConfig.seed],
+    ["Crossover", optimizationConfig.crossover_rate],
+    ["Mutation", optimizationConfig.mutation_rate],
+  ].filter(([, value]) => value != null);
 
   return (
     <div className="detail-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -52,6 +62,11 @@ function HistoryDetail({ item, onClose, jsonUrl, csvUrl, reportUrl }) {
           <div><small>End</small><strong>{configuration.end_time != null ? `${configuration.end_time / 3600}h` : "-"}</strong></div>
           <div><small>Best score</small><strong>{candidate.score != null ? Number(candidate.score).toFixed(2) : "-"}</strong></div>
         </div>
+
+        {optimizationSettings.length > 0 && <div className="detail-section">
+          <p className="section-label">OPTIMIZATION SETTINGS</p>
+          <div className="detail-settings">{optimizationSettings.map(([label, value]) => <div key={label}><small>{label}</small><strong>{value}</strong></div>)}</div>
+        </div>}
 
         <div className="detail-section">
           <p className="section-label">KPI COMPARISON</p>

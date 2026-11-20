@@ -15,7 +15,7 @@ h1 { margin: 0; font-size: 28px; }
 .subtitle { margin: 8px 0 0; color: #9fbcc3; font-size: 13px; }
 main { padding: 30px 40px 42px; }
 .warning { margin-bottom: 24px; padding: 13px 16px; border-left: 4px solid #e49a36; background: #fff2db; color: #805415; font-size: 13px; font-weight: 700; }
-.meta, .cards { display: grid; gap: 10px; }
+.meta, .cards, .settings { display: grid; gap: 10px; }
 .meta { grid-template-columns: repeat(4, 1fr); margin-bottom: 28px; }
 .meta div, .card { padding: 13px; border: 1px solid #d8e4e6; background: #f8fbfb; }
 small { display: block; margin-bottom: 5px; color: #6e8a91; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -24,6 +24,9 @@ h2 { margin: 28px 0 12px; color: #153b46; font-size: 17px; }
 .cards { grid-template-columns: repeat(3, 1fr); }
 .card strong { display: block; color: #0b5663; font-size: 21px; }
 .card span { display: block; margin-top: 5px; color: #668187; font-size: 11px; }
+.settings { grid-template-columns: repeat(4, 1fr); }
+.setting { padding: 11px 13px; border: 1px solid #d8e4e6; background: #f8fbfb; }
+.setting strong { display: block; color: #174d58; font-size: 13px; overflow-wrap: anywhere; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th, td { padding: 11px 10px; border-bottom: 1px solid #dce7e9; text-align: right; }
 th:first-child, td:first-child { text-align: left; }
@@ -35,7 +38,7 @@ th { background: #edf6f7; color: #4e6d74; font-size: 10px; letter-spacing: .07em
 .action em { color: #668187; font-size: 11px; font-style: normal; }
 .empty { padding: 16px; border: 1px dashed #cbdadd; color: #70878c; font-size: 12px; }
 footer { padding: 18px 40px; border-top: 1px solid #dce7e9; color: #789096; font-size: 10px; }
-@media (max-width: 700px) { .meta, .cards { grid-template-columns: 1fr 1fr; } main, header { padding-inline: 22px; } }
+@media (max-width: 700px) { .meta, .cards, .settings { grid-template-columns: 1fr 1fr; } main, header { padding-inline: 22px; } }
 @media print { body { background: white; } .report { width: 100%; margin: 0; box-shadow: none; } @page { margin: 12mm; } }
 """
 
@@ -85,6 +88,9 @@ def render_history_report(item: dict[str, Any]) -> str:
     configuration = result.get("configuration") or result.get("scenario") or {}
     if not isinstance(configuration, dict):
         configuration = {}
+    optimization_config = result.get("config") or {}
+    if not isinstance(optimization_config, dict):
+        optimization_config = {}
     labels = {
         "failure": "Failure simulation",
         "manual_recovery": "Manual recovery evaluation",
@@ -109,6 +115,25 @@ def render_history_report(item: dict[str, Any]) -> str:
         f"<em>{_text(action.get('link_id'), 'Mapped isolation valve')}</em></div>"
         for index, action in enumerate(actions, 1)
     ) or '<div class="empty">No valve action was recorded for this run.</div>'
+    setting_values = (
+        ("Algorithm", result.get("algorithm")),
+        ("Population", optimization_config.get("population_size")),
+        ("Generations", optimization_config.get("generations")),
+        ("Action limit", optimization_config.get("max_actions")),
+        ("Random seed", optimization_config.get("seed")),
+        ("Crossover rate", optimization_config.get("crossover_rate")),
+        ("Mutation rate", optimization_config.get("mutation_rate")),
+    )
+    setting_rows = "".join(
+        f'<div class="setting"><small>{escape(label)}</small><strong>{_text(value)}</strong></div>'
+        for label, value in setting_values
+        if value is not None
+    )
+    settings_section = (
+        f'<h2>Optimization settings</h2><section class="settings">{setting_rows}</section>'
+        if setting_rows
+        else ""
+    )
     demo_warning = (
         '<div class="warning">Synthetic demo result. Do not use these values as hydraulic or experimental evidence.</div>'
         if item.get("runtime_mode") == "demo"
@@ -141,6 +166,7 @@ def render_history_report(item: dict[str, Any]) -> str:
 <div class="card"><small>Actions</small><strong>{len(actions)}</strong><span>Recommended valve operations</span></div>
 <div class="card"><small>Result type</small><strong>{_text(item.get('run_type'))}</strong><span>Archived immutable run</span></div>
 </section>
+{settings_section}
 <h2>KPI comparison</h2><table><thead><tr><th>Indicator</th><th>Failure</th><th>Recovery</th><th>Improvement</th></tr></thead>
 <tbody>{metric_rows}</tbody></table>
 <h2>Control actions</h2><section class="actions">{action_rows}</section>

@@ -2,6 +2,8 @@
 
 Every archived failure, manual-recovery or optimization run can be opened as a standalone HTML report from **History > Report** or **Run detail > Open report**.
 
+AI recovery reports include the exact algorithm, population, generation count, action limit, random seed, crossover rate and mutation rate stored with the run. These fields provide the configuration evidence required to reproduce a Genetic Algorithm result.
+
 The report contains:
 
 - run, network, pipe, timestamp and runtime provenance;
