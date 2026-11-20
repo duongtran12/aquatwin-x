@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { experimentDownloadUrl, getBatchExperiment, getBatchExperiments, startBatchExperiment, waitForBatchExperiment } from "../api/client";
+import { cancelJob, experimentDownloadUrl, getBatchExperiment, getBatchExperiments, startBatchExperiment, waitForBatchExperiment } from "../api/client";
 import ExperimentReport from "./ExperimentReport";
 
 
@@ -16,7 +16,7 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
   const [archive, setArchive] = useState([]);
   const [archiveBusy, setArchiveBusy] = useState("");
   const [error, setError] = useState("");
-  const busy = job && !["completed", "failed"].includes(job.status);
+  const busy = job && !["completed", "failed", "cancelled"].includes(job.status);
 
   useEffect(() => {
     setSelectedPipes(pipes.slice(0, 4).map((pipe) => pipe.id));
@@ -80,6 +80,16 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
     }
   };
 
+  const cancel = async () => {
+    if (!job?.job_id || !busy) return;
+    setError("");
+    try {
+      setJob(await cancelJob(job.job_id));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
   const ga = result?.summary?.genetic_algorithm || {};
   const exhaustive = result?.summary?.exhaustive_search || {};
   const evaluation = result?.evaluation?.overall || {};
@@ -105,7 +115,10 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
 
       <div className="experiment-runbar">
         <div><strong>{totalRuns}</strong><span>method runs across {selectedPipes.length * parseNumbers(leakAreas).length} scenarios</span></div>
-        <button className="primary-button" type="button" onClick={run} disabled={busy || !selectedPipes.length}>{busy ? "Running benchmark..." : "Start batch experiment"}</button>
+        <div className="experiment-runbar__actions">
+          <button className="primary-button" type="button" onClick={run} disabled={busy || !selectedPipes.length}>{busy ? "Running benchmark..." : "Start batch experiment"}</button>
+          {busy && job.cancellable && <button className="secondary-button" type="button" onClick={cancel} disabled={job.status === "cancelling"}>{job.status === "cancelling" ? "Cancelling..." : "Cancel run"}</button>}
+        </div>
       </div>
       {error && <p className="experiment-error">{error}</p>}
       {job && <div className="experiment-progress"><div><span>{job.progress?.message || job.status}</span><strong>{fixed(job.progress?.percent, 0)}%</strong></div><progress max="100" value={job.progress?.percent || 0} /></div>}

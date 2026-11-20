@@ -124,6 +124,11 @@ export async function waitForOptimization(jobId, onStatus) {
 }
 
 
+export function cancelJob(jobId) {
+  return request(`/api/jobs/${jobId}`, { method: "DELETE" });
+}
+
+
 export function startBatchExperiment(payload) {
   return request("/api/experiments/batch", {
     method: "POST",
@@ -148,6 +153,7 @@ export async function waitForBatchExperiment(jobId, onStatus) {
     onStatus?.(job);
     if (job.status === "completed") return request(`/api/results/${jobId}`);
     if (job.status === "failed") throw new Error(job.error || "Batch experiment failed");
+    if (job.status === "cancelled") throw new Error("Batch experiment cancelled");
     await new Promise((resolve) => window.setTimeout(resolve, 1000));
   }
   throw new Error("Batch experiment timed out after 12 minutes");

@@ -31,6 +31,19 @@ def get_job_status(
         raise HTTPException(status_code=404, detail="Không tìm thấy job") from exc
 
 
+@router.delete("/jobs/{job_id}")
+def cancel_job(
+    job_id: str,
+    jobs: JobManager = Depends(get_job_manager),
+) -> dict[str, Any]:
+    try:
+        return jobs.cancel(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Job not found") from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.get("/results/{job_id}")
 def get_job_result(
     job_id: str,
@@ -42,6 +55,8 @@ def get_job_result(
         raise HTTPException(status_code=404, detail="Không tìm thấy job") from exc
     if job["status"] == "failed":
         raise HTTPException(status_code=422, detail=job["error"])
+    if job["status"] == "cancelled":
+        raise HTTPException(status_code=409, detail="Job was cancelled")
     if job["status"] != "completed":
         raise HTTPException(
             status_code=409,
