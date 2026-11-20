@@ -364,14 +364,14 @@ function App() {
                   <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</span>
                   <span>{item.summary.score != null ? `Score ${fixed(item.summary.score, 1)}` : `${item.summary.maximum_affected_nodes ?? 0} affected`}</span>
                   <span>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
-                  <span className="export-links"><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : "View"}</button><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
+                  <span className="export-links"><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : "View"}</button><a href={historyDownloadUrl(item.run_id, "html")} target="_blank" rel="noreferrer">Report</a><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
                 </div>
               ))}
             </div>
           ) : <p className="empty-state history-empty">No saved runs yet. Start a failure simulation to create the first record.</p>}
         </section>
       </main>
-      {selectedHistory && <HistoryDetail item={selectedHistory} onClose={() => setSelectedHistory(null)} jsonUrl={historyDownloadUrl(selectedHistory.run_id, "json")} csvUrl={historyDownloadUrl(selectedHistory.run_id, "csv")} />}
+      {selectedHistory && <HistoryDetail item={selectedHistory} onClose={() => setSelectedHistory(null)} reportUrl={historyDownloadUrl(selectedHistory.run_id, "html")} jsonUrl={historyDownloadUrl(selectedHistory.run_id, "json")} csvUrl={historyDownloadUrl(selectedHistory.run_id, "csv")} />}
     </div>
   );
 }

@@ -9,7 +9,7 @@ const RUN_LABELS = {
 };
 
 
-function HistoryDetail({ item, onClose, jsonUrl, csvUrl }) {
+function HistoryDetail({ item, onClose, jsonUrl, csvUrl, reportUrl }) {
   useEffect(() => {
     const closeOnEscape = (event) => {
       if (event.key === "Escape") onClose();
@@ -64,6 +64,7 @@ function HistoryDetail({ item, onClose, jsonUrl, csvUrl }) {
         </div>
 
         <div className="detail-footer">
+          <a className="secondary-button detail-download" href={reportUrl} target="_blank" rel="noreferrer">Open report</a>
           <a className="secondary-button detail-download" href={jsonUrl}>Download JSON</a>
           <a className="secondary-button detail-download" href={csvUrl}>Download CSV</a>
           <button className="primary-button detail-close" type="button" onClick={onClose}>Close</button>

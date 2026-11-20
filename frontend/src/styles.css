@@ -241,7 +241,7 @@ input[aria-invalid="true"] { border-color: #d36b58; }
 .detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .detail-actions span { padding: 8px 10px; border: 1px solid #2b5a65; background: #0c303a; color: #9ce1e2; font-size: .67rem; font-weight: 600; }
 .detail-empty { margin: 0; color: #607e88; font-size: .7rem; }
-.detail-footer { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; margin-top: 24px; }
+.detail-footer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-top: 24px; }
 .detail-download { display: grid; place-items: center; }
 .detail-close { min-height: 43px; }
 

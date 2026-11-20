@@ -49,6 +49,7 @@ def test_history_api_lists_and_downloads_json_and_csv() -> None:
         listing = client.get("/api/history")
         json_download = client.get(f"/api/history/{saved['run_id']}/download?format=json")
         csv_download = client.get(f"/api/history/{saved['run_id']}/download?format=csv")
+        html_report = client.get(f"/api/history/{saved['run_id']}/download?format=html")
         app.dependency_overrides.clear()
     assert listing.status_code == 200
     assert listing.json()[0]["run_id"] == saved["run_id"]
@@ -56,6 +57,11 @@ def test_history_api_lists_and_downloads_json_and_csv() -> None:
     assert "aquatwin_demo" in json_download.text
     assert csv_download.headers["content-type"].startswith("text/csv")
     assert "maximum_affected_nodes" in csv_download.text
+    assert html_report.headers["content-type"].startswith("text/html")
+    assert html_report.headers["content-disposition"].startswith("inline")
+    assert "AQUATWIN-X DECISION EVIDENCE" in html_report.text
+    assert "Synthetic demo result" in html_report.text
+    assert "aquatwin_demo" in html_report.text
 
 
 def test_history_api_returns_not_found() -> None:

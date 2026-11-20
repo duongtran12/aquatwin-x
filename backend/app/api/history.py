@@ -8,6 +8,7 @@ from fastapi.responses import Response
 
 from backend.app.dependencies import get_history_store
 from backend.app.services.history import RunHistoryStore
+from backend.app.services.reporting import render_history_report
 
 
 router = APIRouter(prefix="/history", tags=["History"])
@@ -43,7 +44,7 @@ def get_history_item(
 @router.get("/{run_id}/download")
 def download_history_item(
     run_id: str,
-    format: Literal["json", "csv"] = "json",
+    format: Literal["json", "csv", "html"] = "json",
     store: RunHistoryStore = Depends(get_history_store),
 ) -> Response:
     try:
@@ -54,7 +55,7 @@ def download_history_item(
     if format == "json":
         content = json.dumps(item, ensure_ascii=False, indent=2)
         media_type = "application/json"
-    else:
+    elif format == "csv":
         stream = io.StringIO()
         summary = item["summary"]
         row = {
@@ -71,10 +72,14 @@ def download_history_item(
         writer.writerow(row)
         content = stream.getvalue()
         media_type = "text/csv"
+    else:
+        content = render_history_report(item)
+        media_type = "text/html; charset=utf-8"
 
     filename = f"aquatwin-{run_id}.{format}"
+    disposition = "inline" if format == "html" else "attachment"
     return Response(
         content=content,
         media_type=media_type,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'{disposition}; filename="{filename}"'},
     )
