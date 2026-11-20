@@ -28,6 +28,9 @@ a { color: inherit; text-decoration: none; }
 .sidebar-note--demo { border-color: #72512d; background: #302517; }
 .sidebar-note--demo .status-dot { background: #f3b65f; box-shadow: 0 0 12px #f3b65f; }
 .sidebar-note--demo small { color: #b28c5a; }
+.sidebar-note--checking .status-dot { background: #e4b35d; box-shadow: 0 0 10px #e4b35d; }
+.sidebar-note--offline { border-color: #633b37; background: #2b1b1b; }
+.sidebar-note--offline .status-dot { background: #ee7968; box-shadow: 0 0 10px #ee7968; }
 
 .dashboard { grid-column: 2; width: 100%; max-width: 1580px; margin: 0 auto; padding: 34px 38px 70px; }
 .topbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; }

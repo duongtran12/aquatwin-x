@@ -9,6 +9,7 @@ import KpiCard from "./components/KpiCard";
 import MetricComparison from "./components/MetricComparison";
 import NetworkMap from "./components/NetworkMap";
 import { findScenarioPreset, SCENARIO_PRESETS } from "./scenarios";
+import { resolveSystemStatus } from "./systemStatus";
 
 const DEFAULT_NETWORK_ID = "aquatwin_demo";
 const fixed = (value, digits = 2) => Number(value || 0).toFixed(digits);
@@ -87,7 +88,7 @@ function App() {
 
   useEffect(() => {
     getNetworks().then(setNetworks).catch((requestError) => setError(requestError.message));
-    getSystemHealth().then(setSystemHealth).catch(() => {});
+    getSystemHealth().then(setSystemHealth).catch(() => setSystemHealth({ status: "unavailable" }));
   }, []);
 
   useEffect(() => {
@@ -315,6 +316,7 @@ function App() {
   const nodeCount = (network?.network?.junctions || 0) + (network?.network?.reservoirs || 0);
   const runtime = network?.runtime;
   const demoMode = runtime?.effective_mode === "demo";
+  const systemStatus = resolveSystemStatus(systemHealth, runtime);
   const pipeLinks = useMemo(() => (network?.elements?.links || []).filter((link) => link.type === "pipe"), [network]);
 
   const toggleValve = (valveId) => setSelectedValves((current) => (
@@ -334,7 +336,7 @@ function App() {
           <a className="nav-link" href="#experiments"><span>06</span>Experiments</a>
           <a className="nav-link" href="#history"><span>07</span>History</a>
         </nav>
-        <div className={demoMode ? "sidebar-note sidebar-note--demo" : "sidebar-note"} title={systemHealth?.build_commit ? `Build ${systemHealth.build_commit}` : undefined}><span className="status-dot" /><div><strong>{demoMode ? "Demo twin active" : "Digital twin online"}</strong><small>{demoMode ? "Synthetic preview data" : "WNTR / PDD model"}{systemHealth?.version ? ` · v${systemHealth.version}` : ""}</small></div></div>
+        <div className={`sidebar-note sidebar-note--${systemStatus.key}`} title={systemHealth?.build_commit ? `Build ${systemHealth.build_commit}` : undefined}><span className="status-dot" /><div><strong>{systemStatus.title}</strong><small>{systemStatus.detail}{systemHealth?.version ? ` · v${systemHealth.version}` : ""}</small></div></div>
       </aside>
 
       <main className="dashboard">
@@ -361,8 +363,8 @@ function App() {
           </div>
         </header>
         {demoMode && <div className="runtime-notice"><strong>DEMO MODE</strong><span>Synthetic preview data is active because WNTR is blocked. These values must not be used in the experimental report.</span></div>}
-        {error && <div className="alert"><strong>Request failed</strong><span>{error}</span></div>}
-        {notice && <div className="success-notice"><strong>COMPLETED</strong><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Dismiss notification">×</button></div>}
+        {error && <div className="alert" role="alert"><strong>Request failed</strong><span>{error}</span></div>}
+        {notice && <div className="success-notice" role="status"><strong>COMPLETED</strong><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Dismiss notification">×</button></div>}
 
         <section className="overview-grid">
           <article className="panel map-panel">
