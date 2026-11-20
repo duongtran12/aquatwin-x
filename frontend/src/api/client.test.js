@@ -5,6 +5,7 @@ import {
   experimentDownloadUrl,
   getHistory,
   getNetwork,
+  getSystemHealth,
   historyDownloadUrl,
   importNetwork,
   simulateFailure,
@@ -43,6 +44,19 @@ test("getHistory serializes only active filters", async () => {
     "http://localhost:8000/api/history?limit=8&network_id=aquatwin_demo&run_type=optimization",
   );
   assert.deepEqual(result, [{ run_id: "run-1" }]);
+});
+
+test("getSystemHealth reads release metadata", async () => {
+  globalThis.fetch = async () => jsonResponse({
+    status: "ok",
+    version: "0.1.0",
+    build_commit: "abc1234",
+  });
+
+  const health = await getSystemHealth();
+
+  assert.equal(health.version, "0.1.0");
+  assert.equal(health.build_commit, "abc1234");
 });
 
 test("simulateFailure sends JSON with the expected content type", async () => {

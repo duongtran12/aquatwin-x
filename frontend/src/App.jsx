@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { cancelJob, deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, historyDownloadUrl, importNetwork, importValveRegistry, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
+import { cancelJob, deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, getSystemHealth, historyDownloadUrl, importNetwork, importValveRegistry, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import BatchExperiment from "./components/BatchExperiment";
 import ExperimentAnalytics from "./components/ExperimentAnalytics";
 import FitnessChart from "./components/FitnessChart";
@@ -14,6 +14,7 @@ const RUN_LABELS = { failure: "Failure", manual_recovery: "Manual recovery", opt
 
 function App() {
   const [networks, setNetworks] = useState([]);
+  const [systemHealth, setSystemHealth] = useState(null);
   const [networkId, setNetworkId] = useState(DEFAULT_NETWORK_ID);
   const [network, setNetwork] = useState(null);
   const [selectedPipe, setSelectedPipe] = useState("P3");
@@ -80,6 +81,7 @@ function App() {
 
   useEffect(() => {
     getNetworks().then(setNetworks).catch((requestError) => setError(requestError.message));
+    getSystemHealth().then(setSystemHealth).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -287,7 +289,7 @@ function App() {
           <a className="nav-link" href="#experiments"><span>06</span>Experiments</a>
           <a className="nav-link" href="#history"><span>07</span>History</a>
         </nav>
-        <div className={demoMode ? "sidebar-note sidebar-note--demo" : "sidebar-note"}><span className="status-dot" /><div><strong>{demoMode ? "Demo twin active" : "Digital twin online"}</strong><small>{demoMode ? "Synthetic preview data" : "WNTR / PDD model"}</small></div></div>
+        <div className={demoMode ? "sidebar-note sidebar-note--demo" : "sidebar-note"} title={systemHealth?.build_commit ? `Build ${systemHealth.build_commit}` : undefined}><span className="status-dot" /><div><strong>{demoMode ? "Demo twin active" : "Digital twin online"}</strong><small>{demoMode ? "Synthetic preview data" : "WNTR / PDD model"}{systemHealth?.version ? ` · v${systemHealth.version}` : ""}</small></div></div>
       </aside>
 
       <main className="dashboard">

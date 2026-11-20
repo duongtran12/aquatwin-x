@@ -2,6 +2,8 @@
 
 [![AquaTwin-X CI](https://github.com/duongtran12/aquatwin-x/actions/workflows/ci.yml/badge.svg)](https://github.com/duongtran12/aquatwin-x/actions/workflows/ci.yml)
 
+Phiên bản sản phẩm hiện tại: **0.1.0**. Xem các mốc đã hoàn thành trong [CHANGELOG.md](CHANGELOG.md).
+
 AquaTwin-X là hệ thống Digital Twin tích hợp thuật toán tối ưu để mô phỏng sự cố và hỗ trợ lựa chọn phương án phục hồi mạng lưới cấp nước.
 
 ## Mục tiêu sản phẩm

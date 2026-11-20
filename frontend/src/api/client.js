@@ -21,6 +21,11 @@ async function request(path, options = {}) {
 }
 
 
+export function getSystemHealth() {
+  return request("/api/health");
+}
+
+
 export function getNetwork(networkId = "aquatwin_demo") {
   return request(`/api/networks/${networkId}`);
 }

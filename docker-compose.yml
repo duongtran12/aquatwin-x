@@ -5,6 +5,8 @@ services:
       dockerfile: docker/backend.Dockerfile
     environment:
       AQUATWIN_RUNTIME_MODE: real
+      AQUATWIN_VERSION: ${AQUATWIN_VERSION:-0.1.0}
+      AQUATWIN_BUILD_COMMIT: ${AQUATWIN_BUILD_COMMIT:-local}
     ports:
       - "8000:8000"
     volumes:

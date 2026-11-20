@@ -8,12 +8,14 @@ from backend.app.api.history import router as history_router
 from backend.app.api.networks import router as networks_router
 from backend.app.api.recovery import router as recovery_router
 from backend.app.api.simulations import router as simulations_router
+from backend.app.config import get_settings
 
 
+settings = get_settings()
 app = FastAPI(
     title="AquaTwin-X API",
     description="API mô phỏng và hỗ trợ phục hồi mạng lưới cấp nước",
-    version="0.1.0",
+    version=settings.aquatwin_version,
 )
 
 app.add_middleware(
@@ -51,6 +53,8 @@ def simulation_runtime_handler(request: Request, exc: RuntimeError) -> JSONRespo
 def root() -> dict[str, str]:
     return {
         "name": "AquaTwin-X API",
+        "version": settings.aquatwin_version,
+        "build_commit": settings.aquatwin_build_commit,
         "docs": "/docs",
     }
 

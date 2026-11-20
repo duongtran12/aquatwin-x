@@ -10,6 +10,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     aquatwin_runtime_mode: Literal["auto", "real", "demo"] = "auto"
+    aquatwin_version: str = "0.1.0"
+    aquatwin_build_commit: str = "development"
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
