@@ -34,6 +34,9 @@ a { color: inherit; text-decoration: none; }
 
 .dashboard { grid-column: 2; width: 100%; max-width: 1580px; margin: 0 auto; padding: 34px 38px 70px; }
 .topbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; }
+.language-control { display: grid; align-content: center; gap: 4px; padding: 9px 12px; border: 1px solid #23434f; background: #0a202a; }
+.language-control span { color: #a0bec9; font-size: .7rem; font-weight: 700; }
+.language-control select { height: auto; padding: 3px 8px; font-size: .83rem; }
 .network-controls { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: flex-end; gap: 8px; }
 .eyebrow, .section-label { margin: 0 0 7px; color: #53cad6; font-size: .67rem; font-weight: 700; letter-spacing: .17em; }
 h1, h2, p { margin-top: 0; }
@@ -340,8 +343,8 @@ input[aria-invalid="true"] { border-color: #d36b58; }
 
 @media (max-width: 500px) {
   .sidebar nav { display: none; }
-  .topbar { margin-bottom: 20px; }
-  .topbar { align-items: flex-start; gap: 14px; }
+  .topbar { flex-direction: column; align-items: stretch; gap: 14px; margin-bottom: 20px; }
+  .network-controls { justify-content: flex-start; }
   .network-import { min-width: 0; padding: 8px 10px; }
   .network-import small { display: none; }
   .scenario-panel { display: block; }

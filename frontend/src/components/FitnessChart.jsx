@@ -1,3 +1,4 @@
+import { useLanguage } from "../language";
 import {
   CartesianGrid,
   Line,
@@ -10,8 +11,9 @@ import {
 
 
 function FitnessChart({ history }) {
+  const { t } = useLanguage();
   if (!history?.length) {
-    return <p className="empty-state">Fitness history appears after AI Recovery finishes.</p>;
+    return <p className="empty-state">{t("Fitness history appears after AI Recovery finishes.")}</p>;
   }
   return (
     <div className="fitness-chart">
@@ -21,11 +23,13 @@ function FitnessChart({ history }) {
           <XAxis dataKey="generation" stroke="#7696a3" fontSize={11} />
           <YAxis domain={[0, 100]} stroke="#7696a3" fontSize={11} />
           <Tooltip
+            labelFormatter={(generation) => `${t("Generation")} ${generation}`}
             contentStyle={{ background: "#0b2632", border: "1px solid #2c5260" }}
           />
           <Line
             type="monotone"
             dataKey="best_score"
+            name={t("Best")}
             stroke="#56dfce"
             strokeWidth={3}
             dot={false}
@@ -33,6 +37,7 @@ function FitnessChart({ history }) {
           <Line
             type="monotone"
             dataKey="average_score"
+            name={t("Average")}
             stroke="#ffb95c"
             strokeWidth={2}
             dot={false}
