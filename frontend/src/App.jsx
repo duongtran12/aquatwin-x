@@ -1,3 +1,4 @@
+import { useLanguage, localizeStatus, runtimeLabel, valveActionLabel } from "./language";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cancelJob, deleteNetwork, getHistory, getHistoryAnalytics, getHistoryItem, getNetwork, getNetworks, getSystemHealth, historyDownloadUrl, importNetwork, importValveRegistry, setHistoryArchived, simulateFailure, simulateWhatIf, startOptimization, waitForOptimization } from "./api/client";
 import BatchExperiment from "./components/BatchExperiment";
@@ -16,6 +17,7 @@ const fixed = (value, digits = 2) => Number(value || 0).toFixed(digits);
 const RUN_LABELS = { failure: "Failure", manual_recovery: "Manual recovery", optimization: "AI recovery" };
 
 function App() {
+  const { language, setLanguage, locale, t } = useLanguage();
   const [networks, setNetworks] = useState([]);
   const [systemHealth, setSystemHealth] = useState(null);
   const [networkId, setNetworkId] = useState(DEFAULT_NETWORK_ID);
@@ -45,7 +47,7 @@ function App() {
     seed: 42,
   });
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(null);
   const [networkImportBusy, setNetworkImportBusy] = useState(false);
 
   const scenarioErrors = useMemo(() => {
@@ -118,7 +120,7 @@ function App() {
     setFailureResult(null);
     setManualResult(null);
     setOptimizationResult(null);
-    setNotice("");
+    setNotice(null);
   }, [selectedPipe, scenario.leakArea, scenario.startHour, scenario.endHour]);
 
   const scenarioPayload = useCallback(() => ({
@@ -134,10 +136,10 @@ function App() {
   const execute = async (taskName, action, successMessage) => {
     setBusy(taskName);
     setError("");
-    setNotice("");
+    setNotice(null);
     try {
       await action();
-      setNotice(successMessage);
+      setNotice([successMessage]);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -226,14 +228,14 @@ function App() {
   const updateHistoryArchive = async (item) => {
     setHistoryBusy(item.run_id);
     setError("");
-    setNotice("");
+    setNotice(null);
     try {
       await setHistoryArchived(item.run_id, !item.archived);
       setComparisonIds((current) => current.filter((runId) => runId !== item.run_id));
       setComparisonItems(null);
       if (selectedHistory?.run_id === item.run_id) setSelectedHistory(null);
       await Promise.all([refreshHistory(), refreshAnalytics()]);
-      setNotice(item.archived ? "Run restored to active history." : "Run archived. Its evidence remains available.");
+      setNotice([item.archived ? "Run restored to active history." : "Run archived. Its evidence remains available."]);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -247,12 +249,12 @@ function App() {
     if (!file) return;
     setNetworkImportBusy(true);
     setError("");
-    setNotice("");
+    setNotice(null);
     try {
       const imported = await importNetwork(file);
       setNetworks(await getNetworks());
       setNetworkId(imported.network.name);
-      setNotice(`Network ${imported.network.name} imported with ${imported.valves.length} virtual valves.`);
+      setNotice(["Network {network} imported with {count} virtual valves.", { network: imported.network.name, count: imported.valves.length }]);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -262,10 +264,10 @@ function App() {
 
   const handleNetworkDelete = async () => {
     if (network?.source !== "uploaded" || busy) return;
-    if (!window.confirm(`Delete uploaded network ${networkId}? Saved run history will be kept.`)) return;
+    if (!window.confirm(t("Delete uploaded network {network}? Saved run history will be kept.", { network: networkId }))) return;
     setNetworkImportBusy(true);
     setError("");
-    setNotice("");
+    setNotice(null);
     try {
       await deleteNetwork(networkId);
       const availableNetworks = await getNetworks();
@@ -273,7 +275,7 @@ function App() {
       setNetworkId(availableNetworks.some((item) => item.name === DEFAULT_NETWORK_ID)
         ? DEFAULT_NETWORK_ID
         : availableNetworks[0]?.name || "");
-      setNotice(`Network ${networkId} deleted. Historical run evidence was preserved.`);
+      setNotice(["Network {network} deleted. Historical run evidence was preserved.", { network: networkId }]);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -287,11 +289,11 @@ function App() {
     if (!file || network?.source !== "uploaded" || busy) return;
     setNetworkImportBusy(true);
     setError("");
-    setNotice("");
+    setNotice(null);
     try {
       const updated = await importValveRegistry(networkId, file);
       setNetwork(updated);
-      setNotice(`Valve registry updated with ${updated.valves.length} surveyed valve locations.`);
+      setNotice(["Valve registry updated with {count} surveyed valve locations.", { count: updated.valves.length }]);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -326,133 +328,140 @@ function App() {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <a className="brand" href="#overview"><span className="brand-mark">AX</span><span><strong>AquaTwin</strong><small>Decision system</small></span></a>
+        <a className="brand" href="#overview"><span className="brand-mark">AX</span><span><strong>AquaTwin</strong><small>{t("Decision system")}</small></span></a>
         <nav>
-          <a className="nav-link nav-link--active" href="#overview"><span>01</span>Overview</a>
-          <a className="nav-link" href="#scenario"><span>02</span>Scenario</a>
-          <a className="nav-link" href="#impact"><span>03</span>Impact</a>
-          <a className="nav-link" href="#recovery"><span>04</span>Recovery</a>
-          <a className="nav-link" href="#analytics"><span>05</span>Analytics</a>
-          <a className="nav-link" href="#experiments"><span>06</span>Experiments</a>
-          <a className="nav-link" href="#history"><span>07</span>History</a>
+          <a className="nav-link nav-link--active" href="#overview"><span>01</span>{t("Overview")}</a>
+          <a className="nav-link" href="#scenario"><span>02</span>{t("Scenario")}</a>
+          <a className="nav-link" href="#impact"><span>03</span>{t("Impact")}</a>
+          <a className="nav-link" href="#recovery"><span>04</span>{t("Recovery")}</a>
+          <a className="nav-link" href="#analytics"><span>05</span>{t("Analytics")}</a>
+          <a className="nav-link" href="#experiments"><span>06</span>{t("Experiments")}</a>
+          <a className="nav-link" href="#history"><span>07</span>{t("History")}</a>
         </nav>
-        <div className={`sidebar-note sidebar-note--${systemStatus.key}`} title={systemHealth?.build_commit ? `Build ${systemHealth.build_commit}` : undefined}><span className="status-dot" /><div><strong>{systemStatus.title}</strong><small>{systemStatus.detail}{systemHealth?.version ? ` · v${systemHealth.version}` : ""}</small></div></div>
+        <div className={`sidebar-note sidebar-note--${systemStatus.key}`} title={systemHealth?.build_commit ? t("Build {commit}", { commit: systemHealth.build_commit }) : undefined}><span className="status-dot" /><div><strong>{t(systemStatus.title)}</strong><small>{t(systemStatus.detail)}{systemHealth?.version ? ` · v${systemHealth.version}` : ""}</small></div></div>
       </aside>
 
       <main className="dashboard">
         <header className="topbar" id="overview">
-          <div><p className="eyebrow">WATER NETWORK OPERATIONS</p><h1>Resilience control room</h1></div>
+          <div><p className="eyebrow">{t("WATER NETWORK OPERATIONS")}</p><h1>{t("Resilience control room")}</h1></div>
           <div className="network-controls">
+            <label className="language-control">
+              <span>{t("Language")}</span>
+              <select value={language} onChange={(event) => setLanguage(event.target.value)}>
+                <option value="vi" lang="vi">Tiếng Việt</option>
+                <option value="en" lang="en">English</option>
+              </select>
+            </label>
             <label className="network-badge">
-              <span>Active network / {runtime?.effective_mode || "loading"}</span>
+              <span>{t("Active network")} / {runtimeLabel(t, runtime?.effective_mode)}</span>
               <select value={networkId} onChange={(event) => setNetworkId(event.target.value)}>
-                {networks.map((item) => <option key={item.name} value={item.name}>{item.name}{item.source === "uploaded" ? " (uploaded)" : ""}</option>)}
+                {networks.map((item) => <option key={item.name} value={item.name}>{item.name}{item.source === "uploaded" ? ` (${t("uploaded")})` : ""}</option>)}
               </select>
             </label>
             <label className={networkImportBusy ? "network-import network-import--busy" : "network-import"}>
               <input type="file" accept=".inp" disabled={networkImportBusy} onChange={handleNetworkImport} />
-              <span>{networkImportBusy ? "Importing..." : "Import EPANET .inp"}</span>
-              <small>Max 5 MB / valves generated automatically</small>
+              <span>{networkImportBusy ? t("Importing...") : t("Import EPANET .inp")}</span>
+              <small>{t("Max 5 MB / valves generated automatically")}</small>
             </label>
             {network?.source === "uploaded" && <label className={networkImportBusy ? "valve-import valve-import--busy" : "valve-import"}>
               <input type="file" accept=".json,application/json" disabled={networkImportBusy || Boolean(busy)} onChange={handleValveImport} />
-              <span>Import valves JSON</span>
-              <small>{network.valves.length} {network.valve_source || "active"} locations</small>
+              <span>{t("Import valves JSON")}</span>
+              <small>{t("{count} {source} locations", { count: network.valves.length, source: t(network.valve_source || "active") })}</small>
             </label>}
-            {network?.source === "uploaded" && <button className="network-delete" type="button" disabled={networkImportBusy || Boolean(busy)} onClick={handleNetworkDelete}>Delete</button>}
+            {network?.source === "uploaded" && <button className="network-delete" type="button" disabled={networkImportBusy || Boolean(busy)} onClick={handleNetworkDelete}>{t("Delete")}</button>}
           </div>
         </header>
-        {demoMode && <div className="runtime-notice"><strong>DEMO MODE</strong><span>Synthetic preview data is active because WNTR is blocked. These values must not be used in the experimental report.</span></div>}
-        {error && <div className="alert" role="alert"><strong>Request failed</strong><span>{error}</span></div>}
-        {notice && <div className="success-notice" role="status"><strong>COMPLETED</strong><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Dismiss notification">×</button></div>}
+        {demoMode && <div className="runtime-notice"><strong>{t("DEMO MODE")}</strong><span>{t("Synthetic preview data is active because WNTR is blocked. These values must not be used in the experimental report.")}</span></div>}
+        {error && <div className="alert" role="alert"><strong>{t("Request failed")}</strong><span>{localizeStatus(t, error)}</span></div>}
+        {notice && <div className="success-notice" role="status"><strong>{t("COMPLETED")}</strong><span>{t(...notice)}</span><button type="button" onClick={() => setNotice(null)} aria-label={t("Dismiss notification")}>×</button></div>}
 
         <section className="overview-grid">
           <article className="panel map-panel">
-            <div className="panel-heading"><div><p className="section-label">LIVE TOPOLOGY</p><h2>Distribution network</h2></div><div className="legend"><span className="legend-normal" />Normal <span className="legend-impact" />Affected</div></div>
-            {network ? <NetworkMap elements={network.elements} selectedPipe={selectedPipe} nodeStates={nodeStates} onSelectPipe={setSelectedPipe} /> : <div className="loading-block">Loading network model...</div>}
+            <div className="panel-heading"><div><p className="section-label">{t("LIVE TOPOLOGY")}</p><h2>{t("Distribution network")}</h2></div><div className="legend"><span className="legend-normal" />{t("Normal")} <span className="legend-impact" />{t("Affected")}</div></div>
+            {network ? <NetworkMap elements={network.elements} selectedPipe={selectedPipe} nodeStates={nodeStates} onSelectPipe={setSelectedPipe} /> : <div className="loading-block">{t("Loading network model...")}</div>}
             <div className="map-footer">
-              <span><strong>{nodeCount}</strong> nodes</span><span><strong>{network?.network?.pipes || 0}</strong> pipes</span><span><strong>{network?.valves?.length || 0}</strong> {network?.valve_source === "surveyed" ? "surveyed valves" : "virtual valves"}</span><span className="map-tip">Select a pipe to define the incident</span>
+              <span><strong>{nodeCount}</strong> {t("nodes")}</span><span><strong>{network?.network?.pipes || 0}</strong> {t("pipes")}</span><span><strong>{network?.valves?.length || 0}</strong> {network?.valve_source === "surveyed" ? t("surveyed valves") : t("virtual valves")}</span><span className="map-tip">{t("Select a pipe to define the incident")}</span>
             </div>
           </article>
 
           <article className="panel scenario-panel" id="scenario">
-            <div className="panel-heading"><div><p className="section-label">SCENARIO BUILDER</p><h2>Pipe leak</h2></div><span className="incident-pill">Selected: {selectedPipe}</span></div>
-            <div className="scenario-presets" aria-label="Quick incident scenarios">
+            <div className="panel-heading"><div><p className="section-label">{t("SCENARIO BUILDER")}</p><h2>{t("Pipe leak")}</h2></div><span className="incident-pill">{t("Selected: {pipe}", { pipe: selectedPipe })}</span></div>
+            <div className="scenario-presets" aria-label={t("Quick incident scenarios")}>
               {SCENARIO_PRESETS.map((preset) => (
                 <button
                   className={activeScenarioPreset === preset.id ? "scenario-preset scenario-preset--active" : "scenario-preset"}
                   disabled={Boolean(busy)}
                   key={preset.id}
                   onClick={() => setScenario({ ...preset.scenario })}
-                  title={preset.description}
+                  title={t(preset.description)}
                   type="button"
                 >
-                  <strong>{preset.label}</strong>
+                  <strong>{t(preset.label)}</strong>
                   <small>{preset.scenario.leakArea} m²</small>
                 </button>
               ))}
             </div>
-            <label className="field-label" htmlFor="pipe">Failure pipe</label>
+            <label className="field-label" htmlFor="pipe">{t("Failure pipe")}</label>
             <select id="pipe" value={selectedPipe} onChange={(event) => setSelectedPipe(event.target.value)}>{pipeLinks.map((link) => <option key={link.id}>{link.id}</option>)}</select>
-            <label className="field-label" htmlFor="area">Leak area (m²)</label>
+            <label className="field-label" htmlFor="area">{t("Leak area (m²)")}</label>
             <input id="area" type="number" min="0.0001" step="0.0001" aria-invalid={Number(scenario.leakArea) <= 0} value={scenario.leakArea} onChange={(event) => setScenario({ ...scenario, leakArea: event.target.value })} />
             <div className="two-fields">
-              <div><label className="field-label" htmlFor="start">Start (hour)</label><input id="start" type="number" min="0" max="23" value={scenario.startHour} onChange={(event) => setScenario({ ...scenario, startHour: event.target.value })} /></div>
-              <div><label className="field-label" htmlFor="end">End (hour)</label><input id="end" type="number" min="1" max="24" value={scenario.endHour} onChange={(event) => setScenario({ ...scenario, endHour: event.target.value })} /></div>
+              <div><label className="field-label" htmlFor="start">{t("Start (hour)")}</label><input id="start" type="number" min="0" max="23" value={scenario.startHour} onChange={(event) => setScenario({ ...scenario, startHour: event.target.value })} /></div>
+              <div><label className="field-label" htmlFor="end">{t("End (hour)")}</label><input id="end" type="number" min="1" max="24" value={scenario.endHour} onChange={(event) => setScenario({ ...scenario, endHour: event.target.value })} /></div>
             </div>
-            <div className="scenario-summary"><span>Duration</span><strong>{Math.max(0, Number(scenario.endHour) - Number(scenario.startHour))} hours</strong></div>
-            {!scenarioValid && <div className="validation-message">{scenarioErrors.map((message) => <span key={message}>{message}</span>)}</div>}
-            <button className="primary-button" type="button" disabled={Boolean(busy) || !network || !scenarioValid} onClick={runFailure}>{busy === "failure" ? "Simulating..." : "Run failure simulation"}</button>
+            <div className="scenario-summary"><span>{t("Duration")}</span><strong>{t("{count} hours", { count: Math.max(0, Number(scenario.endHour) - Number(scenario.startHour)) })}</strong></div>
+            {!scenarioValid && <div className="validation-message">{scenarioErrors.map((message) => <span key={message}>{t(message)}</span>)}</div>}
+            <button className="primary-button" type="button" disabled={Boolean(busy) || !network || !scenarioValid} onClick={runFailure}>{busy === "failure" ? t("Simulating...") : t("Run failure simulation")}</button>
           </article>
         </section>
 
         <section id="impact">
-          <div className="section-heading"><div><p className="section-label">IMPACT ANALYSIS</p><h2>Worst-state indicators</h2></div><span>{worstStep ? `Snapshot at ${worstStep.time_seconds / 3600}h` : "Awaiting simulation"}</span></div>
+          <div className="section-heading"><div><p className="section-label">{t("IMPACT ANALYSIS")}</p><h2>{t("Worst-state indicators")}</h2></div><span>{worstStep ? t("Snapshot at {hour}h", { hour: worstStep.time_seconds / 3600 }) : t("Awaiting simulation")}</span></div>
           <div className="kpi-grid">
-            <KpiCard label="Service availability" value={failureSummary ? `${fixed(failureSummary.minimum_service_availability * 100, 1)}%` : "--"} detail="Minimum during incident" tone="cyan" />
-            <KpiCard label="Pressure violations" value={failureSummary?.maximum_pressure_violations ?? "--"} detail="Nodes below requirement" tone="amber" />
-            <KpiCard label="Affected nodes" value={failureSummary?.maximum_affected_nodes ?? "--"} detail="Pressure loss ≥ 2 m" tone="red" />
-            <KpiCard label="Leakage volume" value={failureSummary ? `${fixed(failureSummary.total_leakage_volume)} m³` : "--"} detail="Integrated over scenario" tone="blue" />
+            <KpiCard label={t("Service availability")} value={failureSummary ? `${fixed(failureSummary.minimum_service_availability * 100, 1)}%` : "--"} detail={t("Minimum during incident")} tone="cyan" />
+            <KpiCard label={t("Pressure violations")} value={failureSummary?.maximum_pressure_violations ?? "--"} detail={t("Nodes below requirement")} tone="amber" />
+            <KpiCard label={t("Affected nodes")} value={failureSummary?.maximum_affected_nodes ?? "--"} detail={t("Pressure loss ≥ 2 m")} tone="red" />
+            <KpiCard label={t("Leakage volume")} value={failureSummary ? `${fixed(failureSummary.total_leakage_volume)} m³` : "--"} detail={t("Integrated over scenario")} tone="blue" />
           </div>
         </section>
 
         <section className="recovery-grid" id="recovery">
           <article className="panel recovery-panel">
-            <div className="panel-heading"><div><p className="section-label">WHAT-IF CONTROL</p><h2>Manual isolation</h2></div></div>
-            <p className="panel-copy">Choose virtual valves to close, then evaluate service and leakage after isolation.</p>
+            <div className="panel-heading"><div><p className="section-label">{t("WHAT-IF CONTROL")}</p><h2>{t("Manual isolation")}</h2></div></div>
+            <p className="panel-copy">{t("Choose virtual valves to close, then evaluate service and leakage after isolation.")}</p>
             <div className="valve-grid">{(network?.valves || []).map((valve) => (
               <label className={selectedValves.includes(valve.valve_id) ? "valve-option valve-option--selected" : "valve-option"} key={valve.valve_id}>
-                <input type="checkbox" checked={selectedValves.includes(valve.valve_id)} onChange={() => toggleValve(valve.valve_id)} /><span>{valve.valve_id}<small>{valve.link_id} / {valve.endpoint}</small></span>
+                <input type="checkbox" checked={selectedValves.includes(valve.valve_id)} onChange={() => toggleValve(valve.valve_id)} /><span>{valve.valve_id}<small>{valve.link_id} / {t(valve.endpoint)}</small></span>
               </label>
             ))}</div>
-            <button className="secondary-button" type="button" disabled={Boolean(busy) || !failureSummary || selectedValves.length === 0} onClick={runManualRecovery}>{busy === "manual" ? "Evaluating..." : `Evaluate ${selectedValves.length} valve action(s)`}</button>
+            <button className="secondary-button" type="button" disabled={Boolean(busy) || !failureSummary || selectedValves.length === 0} onClick={runManualRecovery}>{busy === "manual" ? t("Evaluating...") : t("Evaluate {count} valve action(s)", { count: selectedValves.length })}</button>
           </article>
 
           <article className="panel ai-panel">
-            <div className="panel-heading"><div><p className="section-label">AI RECOVERY</p><h2>Genetic optimization</h2></div><span className="ai-badge">GA</span></div>
-            <p className="panel-copy">Search up to two valve operations for the best balance of service continuity, pressure and leakage.</p>
+            <div className="panel-heading"><div><p className="section-label">{t("AI RECOVERY")}</p><h2>{t("Genetic optimization")}</h2></div><span className="ai-badge">GA</span></div>
+            <p className="panel-copy">{t("Search within the action limit to balance service continuity, pressure and leakage.")}</p>
             <div className="optimizer-config">
-              <label><span>Population</span><input type="number" min="4" max="100" value={optimizerConfig.populationSize} onChange={(event) => updateOptimizerConfig("populationSize", event.target.value)} disabled={Boolean(busy)} /></label>
-              <label><span>Generations</span><input type="number" min="1" max="200" value={optimizerConfig.generations} onChange={(event) => updateOptimizerConfig("generations", event.target.value)} disabled={Boolean(busy)} /></label>
-              <label><span>Action limit</span><input type="number" min="1" max="5" value={optimizerConfig.maxActions} onChange={(event) => updateOptimizerConfig("maxActions", event.target.value)} disabled={Boolean(busy)} /></label>
-              <label><span>Random seed</span><input type="number" value={optimizerConfig.seed} onChange={(event) => updateOptimizerConfig("seed", event.target.value)} disabled={Boolean(busy)} /></label>
+              <label><span>{t("Population")}</span><input type="number" min="4" max="100" value={optimizerConfig.populationSize} onChange={(event) => updateOptimizerConfig("populationSize", event.target.value)} disabled={Boolean(busy)} /></label>
+              <label><span>{t("Generations")}</span><input type="number" min="1" max="200" value={optimizerConfig.generations} onChange={(event) => updateOptimizerConfig("generations", event.target.value)} disabled={Boolean(busy)} /></label>
+              <label><span>{t("Action limit")}</span><input type="number" min="1" max="5" value={optimizerConfig.maxActions} onChange={(event) => updateOptimizerConfig("maxActions", event.target.value)} disabled={Boolean(busy)} /></label>
+              <label><span>{t("Random seed")}</span><input type="number" value={optimizerConfig.seed} onChange={(event) => updateOptimizerConfig("seed", event.target.value)} disabled={Boolean(busy)} /></label>
             </div>
-            {!optimizerValid && <p className="optimizer-error">{optimizerErrors[0]}</p>}
-            <button className="primary-button" type="button" disabled={Boolean(busy) || !failureSummary || !optimizerValid} onClick={runAiRecovery}>{busy === "optimization" ? `Optimizing · ${fixed(optimizationJob?.progress?.percent, 0)}%` : "Find optimal recovery"}</button>
-            {busy === "optimization" && optimizationJob?.cancellable && <button className="secondary-button ai-cancel" type="button" onClick={cancelOptimization} disabled={optimizationJob.status === "cancelling"}>{optimizationJob.status === "cancelling" ? "Cancelling..." : "Cancel optimization"}</button>}
-            {busy === "optimization" && optimizationJob?.progress && <div className="experiment-progress ai-progress"><div><span>{optimizationJob.progress.message || optimizationJob.status}</span><strong>{fixed(optimizationJob.progress.percent, 0)}%</strong></div><progress max="100" value={optimizationJob.progress.percent || 0} /></div>}
-            {optimizationResult?.best_candidate && <div className="best-score"><span>Best solution score</span><strong>{fixed(optimizationResult.best_candidate.score, 1)}</strong><small>{optimizationResult.unique_evaluated_count} unique candidates evaluated</small></div>}
+            {!optimizerValid && <p className="optimizer-error">{t(optimizerErrors[0])}</p>}
+            <button className="primary-button" type="button" disabled={Boolean(busy) || !failureSummary || !optimizerValid} onClick={runAiRecovery}>{busy === "optimization" ? t("Optimizing · {percent}%", { percent: fixed(optimizationJob?.progress?.percent, 0) }) : t("Find optimal recovery")}</button>
+            {busy === "optimization" && optimizationJob?.cancellable && <button className="secondary-button ai-cancel" type="button" onClick={cancelOptimization} disabled={optimizationJob.status === "cancelling"}>{optimizationJob.status === "cancelling" ? t("Cancelling...") : t("Cancel optimization")}</button>}
+            {busy === "optimization" && optimizationJob?.progress && <div className="experiment-progress ai-progress"><div><span>{localizeStatus(t, optimizationJob.progress.message || optimizationJob.status)}</span><strong>{fixed(optimizationJob.progress.percent, 0)}%</strong></div><progress max="100" value={optimizationJob.progress.percent || 0} /></div>}
+            {optimizationResult?.best_candidate && <div className="best-score"><span>{t("Best solution score")}</span><strong>{fixed(optimizationResult.best_candidate.score, 1)}</strong><small>{t("{count} unique candidates evaluated", { count: optimizationResult.unique_evaluated_count })}</small></div>}
           </article>
         </section>
 
         <section className="analysis-grid">
-          <article className="panel comparison-panel"><div className="panel-heading"><div><p className="section-label">DECISION EVIDENCE</p><h2>Before / after comparison</h2></div></div><MetricComparison failure={failureSummary} recovery={recoverySummary} /></article>
-          <article className="panel chart-panel"><div className="panel-heading"><div><p className="section-label">CONVERGENCE</p><h2>GA fitness history</h2></div><div className="chart-legend"><span />Best <span />Average</div></div><FitnessChart history={optimizationResult?.history} /></article>
+          <article className="panel comparison-panel"><div className="panel-heading"><div><p className="section-label">{t("DECISION EVIDENCE")}</p><h2>{t("Before / after comparison")}</h2></div></div><MetricComparison failure={failureSummary} recovery={recoverySummary} /></article>
+          <article className="panel chart-panel"><div className="panel-heading"><div><p className="section-label">{t("CONVERGENCE")}</p><h2>{t("GA fitness history")}</h2></div><div className="chart-legend"><span />{t("Best")} <span />{t("Average")}</div></div><FitnessChart history={optimizationResult?.history} /></article>
         </section>
 
         <section className="panel decision-panel">
-          <div><p className="section-label">RECOMMENDED RESPONSE</p><h2>{bestActions.length ? "Recovery plan ready for review" : "Run a recovery analysis to generate a plan"}</h2><p>{bestActions.length ? "The following control actions produced the current recovery indicators." : "AquaTwin-X keeps recommendations explainable by showing every proposed valve operation and its measured impact."}</p></div>
-          <div className="action-list">{bestActions.map((action, index) => <div className="action-item" key={`${action.valve_id}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><strong>{action.status === "CLOSED" ? "Close" : "Open"} {action.valve_id}</strong><small>{action.link_id ? `on ${action.link_id}` : "virtual isolation valve"}</small></div>)}</div>
+          <div><p className="section-label">{t("RECOMMENDED RESPONSE")}</p><h2>{bestActions.length ? t("Recovery plan ready for review") : t("Run a recovery analysis to generate a plan")}</h2><p>{bestActions.length ? t("The following control actions produced the current recovery indicators.") : t("AquaTwin-X keeps recommendations explainable by showing every proposed valve operation and its measured impact.")}</p></div>
+          <div className="action-list">{bestActions.map((action, index) => <div className="action-item" key={`${action.valve_id}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><strong>{valveActionLabel(t, action)}</strong><small>{action.link_id ? t("on {link}", { link: action.link_id }) : t("virtual isolation valve")}</small></div>)}</div>
         </section>
 
         <ExperimentAnalytics analytics={analytics} mode={analyticsMode} onModeChange={setAnalyticsMode} loading={analyticsLoading} />
@@ -461,35 +470,35 @@ function App() {
 
         <section className="panel history-panel" id="history">
           <div className="panel-heading">
-            <div><p className="section-label">RUN ARCHIVE</p><h2>Recent simulations</h2></div>
-            <button className="text-button" type="button" onClick={refreshHistory}>Refresh</button>
+            <div><p className="section-label">{t("RUN ARCHIVE")}</p><h2>{t("Recent simulations")}</h2></div>
+            <button className="text-button" type="button" onClick={refreshHistory}>{t("Refresh")}</button>
           </div>
           <div className="history-filters">
-            <label><span>Network</span><select value={historyFilters.networkId} onChange={(event) => updateHistoryFilter("networkId", event.target.value)}><option value="all">All networks</option>{networks.map((item) => <option value={item.name} key={item.name}>{item.name}</option>)}</select></label>
-            <label><span>Run type</span><select value={historyFilters.runType} onChange={(event) => updateHistoryFilter("runType", event.target.value)}><option value="all">All run types</option><option value="failure">Failure</option><option value="manual_recovery">Manual recovery</option><option value="optimization">AI recovery</option></select></label>
-            <label><span>Runtime</span><select value={historyFilters.runtimeMode} onChange={(event) => updateHistoryFilter("runtimeMode", event.target.value)}><option value="all">All modes</option><option value="real">Real WNTR</option><option value="demo">Demo</option></select></label>
-            <label><span>Archive</span><select value={historyFilters.archiveStatus} onChange={(event) => updateHistoryFilter("archiveStatus", event.target.value)}><option value="active">Active runs</option><option value="archived">Archived runs</option><option value="all">All runs</option></select></label>
-            <strong>{history.length} matching runs</strong>
+            <label><span>{t("Network")}</span><select value={historyFilters.networkId} onChange={(event) => updateHistoryFilter("networkId", event.target.value)}><option value="all">{t("All networks")}</option>{networks.map((item) => <option value={item.name} key={item.name}>{item.name}</option>)}</select></label>
+            <label><span>{t("Run type")}</span><select value={historyFilters.runType} onChange={(event) => updateHistoryFilter("runType", event.target.value)}><option value="all">{t("All run types")}</option><option value="failure">{t("Failure")}</option><option value="manual_recovery">{t("Manual recovery")}</option><option value="optimization">{t("AI recovery")}</option></select></label>
+            <label><span>{t("Runtime")}</span><select value={historyFilters.runtimeMode} onChange={(event) => updateHistoryFilter("runtimeMode", event.target.value)}><option value="all">{t("All modes")}</option><option value="real">{t("Real WNTR")}</option><option value="demo">{t("Demo")}</option></select></label>
+            <label><span>{t("Archive")}</span><select value={historyFilters.archiveStatus} onChange={(event) => updateHistoryFilter("archiveStatus", event.target.value)}><option value="active">{t("Active runs")}</option><option value="archived">{t("Archived runs")}</option><option value="all">{t("All runs")}</option></select></label>
+            <strong>{t("{count} matching runs", { count: history.length })}</strong>
           </div>
           <div className="history-compare-bar">
-            <span><strong>{comparisonIds.length}/2</strong> runs selected for comparison</span>
-            <div><button type="button" onClick={() => { setComparisonIds([]); setComparisonItems(null); }} disabled={!comparisonIds.length}>Clear</button><button type="button" onClick={compareHistory} disabled={comparisonIds.length !== 2 || comparisonBusy}>{comparisonBusy ? "Loading..." : "Compare selected"}</button></div>
+            <span><strong>{comparisonIds.length}/2</strong> {t("runs selected for comparison")}</span>
+            <div><button type="button" onClick={() => { setComparisonIds([]); setComparisonItems(null); }} disabled={!comparisonIds.length}>{t("Clear")}</button><button type="button" onClick={compareHistory} disabled={comparisonIds.length !== 2 || comparisonBusy}>{comparisonBusy ? t("Loading...") : t("Compare selected")}</button></div>
           </div>
           {history.length ? (
             <div className="history-table">
-              <div className="history-row history-row--head"><span>Run</span><span>Pipe</span><span>Mode</span><span>Result</span><span>Created</span><span>Actions</span></div>
+              <div className="history-row history-row--head"><span>{t("Run")}</span><span>{t("Pipe")}</span><span>{t("Mode")}</span><span>{t("Result")}</span><span>{t("Created")}</span><span>{t("Actions")}</span></div>
               {history.map((item) => (
                 <div className={item.archived ? "history-row history-row--archived" : "history-row"} key={item.run_id}>
-                  <strong>{RUN_LABELS[item.run_type] || item.run_type}</strong>
+                  <strong>{t(RUN_LABELS[item.run_type] || item.run_type)}</strong>
                   <span>{item.pipe_id || "-"}</span>
-                  <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</span>
-                  <span>{item.summary.score != null ? `Score ${fixed(item.summary.score, 1)}` : `${item.summary.maximum_affected_nodes ?? 0} affected`}</span>
-                  <span>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
-                  <span className="export-links"><button className={comparisonIds.includes(item.run_id) ? "compare-toggle compare-toggle--active" : "compare-toggle"} type="button" onClick={() => toggleHistoryComparison(item.run_id)}>{comparisonIds.includes(item.run_id) ? "Selected" : "Compare"}</button><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : "View"}</button><button className="archive-toggle" type="button" onClick={() => updateHistoryArchive(item)} disabled={historyBusy === item.run_id}>{item.archived ? "Restore" : "Archive"}</button><a href={historyDownloadUrl(item.run_id, "html")} target="_blank" rel="noreferrer">Report</a><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
+                  <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{runtimeLabel(t, item.runtime_mode)}</span>
+                  <span>{item.summary.score != null ? t("Score {score}", { score: fixed(item.summary.score, 1) }) : t("{count} affected", { count: item.summary.maximum_affected_nodes ?? 0 })}</span>
+                  <span>{new Date(item.created_at).toLocaleString(locale)}</span>
+                  <span className="export-links"><button className={comparisonIds.includes(item.run_id) ? "compare-toggle compare-toggle--active" : "compare-toggle"} type="button" onClick={() => toggleHistoryComparison(item.run_id)}>{comparisonIds.includes(item.run_id) ? t("Selected") : t("Compare")}</button><button type="button" onClick={() => openHistory(item.run_id)} disabled={historyBusy === item.run_id}>{historyBusy === item.run_id ? "..." : t("View")}</button><button className="archive-toggle" type="button" onClick={() => updateHistoryArchive(item)} disabled={historyBusy === item.run_id}>{item.archived ? t("Restore") : t("Archive")}</button><a href={historyDownloadUrl(item.run_id, "html")} target="_blank" rel="noreferrer">{t("Report")}</a><a href={historyDownloadUrl(item.run_id, "json")}>JSON</a><a href={historyDownloadUrl(item.run_id, "csv")}>CSV</a></span>
                 </div>
               ))}
             </div>
-          ) : <p className="empty-state history-empty">No saved runs match the current filters.</p>}
+          ) : <p className="empty-state history-empty">{t("No saved runs match the current filters.")}</p>}
         </section>
       </main>
       {selectedHistory && <HistoryDetail item={selectedHistory} onClose={() => setSelectedHistory(null)} reportUrl={historyDownloadUrl(selectedHistory.run_id, "html")} jsonUrl={historyDownloadUrl(selectedHistory.run_id, "json")} csvUrl={historyDownloadUrl(selectedHistory.run_id, "csv")} />}

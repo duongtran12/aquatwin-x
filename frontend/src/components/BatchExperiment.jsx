@@ -1,3 +1,4 @@
+import { useLanguage, localizeStatus, runtimeLabel } from "../language";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cancelJob, experimentDownloadUrl, getBatchExperiment, getBatchExperiments, startBatchExperiment, waitForBatchExperiment } from "../api/client";
 import ExperimentReport from "./ExperimentReport";
@@ -8,6 +9,7 @@ const fixed = (value, digits = 2) => value == null ? "--" : Number(value).toFixe
 
 
 function BatchExperiment({ networkId, pipes, runtimeMode }) {
+  const { locale, t } = useLanguage();
   const [selectedPipes, setSelectedPipes] = useState([]);
   const [leakAreas, setLeakAreas] = useState("0.0003, 0.0007");
   const [seeds, setSeeds] = useState("7, 42, 101");
@@ -97,58 +99,58 @@ function BatchExperiment({ networkId, pipes, runtimeMode }) {
   return (
     <section className="panel experiment-panel" id="experiments">
       <div className="panel-heading experiment-heading">
-        <div><p className="section-label">BATCH EXPERIMENTS</p><h2>Reproducible benchmark runner</h2></div>
-        <span className={`mode-tag mode-tag--${runtimeMode}`}>{runtimeMode || "loading"}</span>
+        <div><p className="section-label">{t("BATCH EXPERIMENTS")}</p><h2>{t("Reproducible benchmark runner")}</h2></div>
+        <span className={`mode-tag mode-tag--${runtimeMode}`}>{runtimeLabel(t, runtimeMode)}</span>
       </div>
-      {runtimeMode === "demo" && <p className="experiment-warning">Demo runs use synthetic values for interface testing only. Rerun in Real mode before using results in the report.</p>}
+      {runtimeMode === "demo" && <p className="experiment-warning">{t("Demo runs use synthetic values for interface testing only. Rerun in Real mode before using results in the report.")}</p>}
 
       <div className="experiment-form">
         <div className="experiment-pipes">
-          <span className="field-label">Failure pipes (maximum 12)</span>
+          <span className="field-label">{t("Failure pipes (maximum 12)")}</span>
           <div className="pipe-options">{pipes.map((pipe) => (
             <button className={selectedPipes.includes(pipe.id) ? "pipe-chip pipe-chip--active" : "pipe-chip"} type="button" key={pipe.id} onClick={() => togglePipe(pipe.id)} disabled={busy}>{pipe.id}</button>
           ))}</div>
         </div>
-        <label><span className="field-label">Leak areas (m³, comma-separated)</span><input value={leakAreas} onChange={(event) => setLeakAreas(event.target.value)} disabled={busy} /></label>
-        <label><span className="field-label">GA seeds (comma-separated)</span><input value={seeds} onChange={(event) => setSeeds(event.target.value)} disabled={busy} /></label>
+        <label><span className="field-label">{t("Leak areas (m², comma-separated)")}</span><input value={leakAreas} onChange={(event) => setLeakAreas(event.target.value)} disabled={busy} /></label>
+        <label><span className="field-label">{t("GA seeds (comma-separated)")}</span><input value={seeds} onChange={(event) => setSeeds(event.target.value)} disabled={busy} /></label>
       </div>
 
       <div className="experiment-runbar">
-        <div><strong>{totalRuns}</strong><span>method runs across {selectedPipes.length * parseNumbers(leakAreas).length} scenarios</span></div>
+        <div><strong>{totalRuns}</strong><span>{t("method runs across {count} scenarios", { count: selectedPipes.length * parseNumbers(leakAreas).length })}</span></div>
         <div className="experiment-runbar__actions">
-          <button className="primary-button" type="button" onClick={run} disabled={busy || !selectedPipes.length}>{busy ? "Running benchmark..." : "Start batch experiment"}</button>
-          {busy && job.cancellable && <button className="secondary-button" type="button" onClick={cancel} disabled={job.status === "cancelling"}>{job.status === "cancelling" ? "Cancelling..." : "Cancel run"}</button>}
+          <button className="primary-button" type="button" onClick={run} disabled={busy || !selectedPipes.length}>{busy ? t("Running benchmark...") : t("Start batch experiment")}</button>
+          {busy && job.cancellable && <button className="secondary-button" type="button" onClick={cancel} disabled={job.status === "cancelling"}>{job.status === "cancelling" ? t("Cancelling...") : t("Cancel run")}</button>}
         </div>
       </div>
-      {error && <p className="experiment-error">{error}</p>}
-      {job && <div className="experiment-progress"><div><span>{job.progress?.message || job.status}</span><strong>{fixed(job.progress?.percent, 0)}%</strong></div><progress max="100" value={job.progress?.percent || 0} /></div>}
+      {error && <p className="experiment-error">{localizeStatus(t, error)}</p>}
+      {job && <div className="experiment-progress"><div><span>{localizeStatus(t, job.progress?.message || job.status)}</span><strong>{fixed(job.progress?.percent, 0)}%</strong></div><progress max="100" value={job.progress?.percent || 0} /></div>}
 
       {result && <div className="experiment-result">
-        <div><span>Scenarios</span><strong>{result.configuration.scenario_count}</strong></div>
-        <div><span>GA mean score</span><strong>{fixed(ga.mean_score)}</strong></div>
-        <div><span>Optimum hit rate</span><strong>{ga.global_optimum_hit_rate == null ? "--" : `${fixed(ga.global_optimum_hit_rate * 100, 1)}%`}</strong></div>
-        <div><span>Mean GA speedup</span><strong>{evaluation.mean_speedup == null ? "--" : `${fixed(evaluation.mean_speedup, 2)}x`}</strong></div>
-        <div><span>Candidate reduction</span><strong>{evaluation.mean_candidate_reduction_rate == null ? "--" : `${fixed(evaluation.mean_candidate_reduction_rate * 100, 1)}%`}</strong></div>
-        <div><span>Exhaustive mean time</span><strong>{fixed(exhaustive.mean_computation_time_seconds, 3)}s</strong></div>
-        <div className="experiment-downloads"><a href={experimentDownloadUrl(job.job_id, "zip")}>Evidence ZIP</a><a href={experimentDownloadUrl(job.job_id, "csv")}>Raw CSV</a><a href={experimentDownloadUrl(job.job_id, "summary")}>Summary CSV</a><a href={experimentDownloadUrl(job.job_id, "report")}>Report MD</a><a href={experimentDownloadUrl(job.job_id, "json")}>Full JSON</a></div>
+        <div><span>{t("Scenarios")}</span><strong>{result.configuration.scenario_count}</strong></div>
+        <div><span>{t("GA mean score")}</span><strong>{fixed(ga.mean_score)}</strong></div>
+        <div><span>{t("Optimum hit rate")}</span><strong>{ga.global_optimum_hit_rate == null ? "--" : `${fixed(ga.global_optimum_hit_rate * 100, 1)}%`}</strong></div>
+        <div><span>{t("Mean GA speedup")}</span><strong>{evaluation.mean_speedup == null ? "--" : `${fixed(evaluation.mean_speedup, 2)}x`}</strong></div>
+        <div><span>{t("Candidate reduction")}</span><strong>{evaluation.mean_candidate_reduction_rate == null ? "--" : `${fixed(evaluation.mean_candidate_reduction_rate * 100, 1)}%`}</strong></div>
+        <div><span>{t("Exhaustive mean time")}</span><strong>{fixed(exhaustive.mean_computation_time_seconds, 3)}s</strong></div>
+        <div className="experiment-downloads"><a href={experimentDownloadUrl(job.job_id, "zip")}>{t("Evidence ZIP")}</a><a href={experimentDownloadUrl(job.job_id, "csv")}>{t("Raw CSV")}</a><a href={experimentDownloadUrl(job.job_id, "summary")}>{t("Summary CSV")}</a><a href={experimentDownloadUrl(job.job_id, "report")}>{t("Report MD")}</a><a href={experimentDownloadUrl(job.job_id, "json")}>{t("Full JSON")}</a></div>
       </div>}
 
       <ExperimentReport result={result} />
 
       <div className="experiment-archive">
-        <div className="experiment-archive__heading"><div><p className="section-label">EXPERIMENT ARCHIVE</p><h3>Saved benchmark runs</h3></div><button className="text-button" type="button" onClick={refreshArchive}>Refresh</button></div>
+        <div className="experiment-archive__heading"><div><p className="section-label">{t("EXPERIMENT ARCHIVE")}</p><h3>{t("Saved benchmark runs")}</h3></div><button className="text-button" type="button" onClick={refreshArchive}>{t("Refresh")}</button></div>
         {archive.length ? <div className="experiment-archive__table">
-          <div className="experiment-archive__row experiment-archive__row--head"><span>Network</span><span>Mode</span><span>Scenarios</span><span>GA score</span><span>Hit rate</span><span>Created</span><span>Action</span></div>
+          <div className="experiment-archive__row experiment-archive__row--head"><span>{t("Network")}</span><span>{t("Mode")}</span><span>{t("Scenarios")}</span><span>{t("GA score")}</span><span>{t("Hit rate")}</span><span>{t("Created")}</span><span>{t("Action")}</span></div>
           {archive.map((item) => <div className="experiment-archive__row" key={item.experiment_id}>
             <strong>{item.network_id || "Unknown"}</strong>
-            <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</span>
+            <span className={`mode-tag mode-tag--${item.runtime_mode}`}>{runtimeLabel(t, item.runtime_mode)}</span>
             <span>{item.scenario_count}</span>
             <span>{fixed(item.ga_mean_score)}</span>
             <span>{item.global_optimum_hit_rate == null ? "--" : `${fixed(item.global_optimum_hit_rate * 100, 1)}%`}</span>
-            <span>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
-            <button type="button" onClick={() => openArchived(item.experiment_id)} disabled={archiveBusy === item.experiment_id}>{archiveBusy === item.experiment_id ? "Loading..." : "Open"}</button>
+            <span>{new Date(item.created_at).toLocaleString(locale)}</span>
+            <button type="button" onClick={() => openArchived(item.experiment_id)} disabled={archiveBusy === item.experiment_id}>{archiveBusy === item.experiment_id ? t("Loading...") : t("Open")}</button>
           </div>)}
-        </div> : <p className="experiment-archive__empty">No saved benchmark runs yet.</p>}
+        </div> : <p className="experiment-archive__empty">{t("No saved benchmark runs yet.")}</p>}
       </div>
     </section>
   );

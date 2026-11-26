@@ -1,3 +1,4 @@
+import { useLanguage, runtimeLabel, valveActionLabel } from "../language";
 import { useEffect } from "react";
 import MetricComparison from "./MetricComparison";
 
@@ -10,6 +11,7 @@ const RUN_LABELS = {
 
 
 function HistoryDetail({ item, onClose, jsonUrl, csvUrl, reportUrl }) {
+  const { locale, t } = useLanguage();
   useEffect(() => {
     const closeOnEscape = (event) => {
       if (event.key === "Escape") onClose();
@@ -41,48 +43,48 @@ function HistoryDetail({ item, onClose, jsonUrl, csvUrl, reportUrl }) {
       <section className="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="history-detail-title">
         <div className="detail-heading">
           <div>
-            <p className="section-label">RUN DETAIL</p>
-            <h2 id="history-detail-title">{RUN_LABELS[item.run_type] || item.run_type}</h2>
+            <p className="section-label">{t("RUN DETAIL")}</p>
+            <h2 id="history-detail-title">{t(RUN_LABELS[item.run_type] || item.run_type)}</h2>
           </div>
-          <button className="close-button" type="button" onClick={onClose} aria-label="Close detail">×</button>
+          <button className="close-button" type="button" onClick={onClose} aria-label={t("Close detail")}>×</button>
         </div>
 
         <div className="detail-meta">
-          <span><small>Run ID</small>{item.run_id.slice(0, 12)}</span>
-          <span><small>Pipe</small>{item.pipe_id || "-"}</span>
-          <span><small>Runtime</small><b className={`mode-tag mode-tag--${item.runtime_mode}`}>{item.runtime_mode}</b></span>
-          <span><small>Created</small>{new Date(item.created_at).toLocaleString("vi-VN")}</span>
+          <span><small>{t("Run ID")}</small>{item.run_id.slice(0, 12)}</span>
+          <span><small>{t("Pipe")}</small>{item.pipe_id || "-"}</span>
+          <span><small>{t("Runtime")}</small><b className={`mode-tag mode-tag--${item.runtime_mode}`}>{runtimeLabel(t, item.runtime_mode)}</b></span>
+          <span><small>{t("Created")}</small>{new Date(item.created_at).toLocaleString(locale)}</span>
         </div>
 
-        {item.runtime_mode === "demo" && <div className="detail-warning">Synthetic preview result — do not use this run as experimental evidence.</div>}
+        {item.runtime_mode === "demo" && <div className="detail-warning">{t("Synthetic preview result — do not use this run as experimental evidence.")}</div>}
 
         <div className="detail-grid">
-          <div><small>Leak area</small><strong>{configuration.leak_area != null ? `${configuration.leak_area} m²` : "-"}</strong></div>
-          <div><small>Start</small><strong>{configuration.start_time != null ? `${configuration.start_time / 3600}h` : "-"}</strong></div>
-          <div><small>End</small><strong>{configuration.end_time != null ? `${configuration.end_time / 3600}h` : "-"}</strong></div>
-          <div><small>Best score</small><strong>{candidate.score != null ? Number(candidate.score).toFixed(2) : "-"}</strong></div>
+          <div><small>{t("Leak area")}</small><strong>{configuration.leak_area != null ? `${configuration.leak_area} m²` : "-"}</strong></div>
+          <div><small>{t("Start")}</small><strong>{configuration.start_time != null ? `${configuration.start_time / 3600}h` : "-"}</strong></div>
+          <div><small>{t("End")}</small><strong>{configuration.end_time != null ? `${configuration.end_time / 3600}h` : "-"}</strong></div>
+          <div><small>{t("Best score")}</small><strong>{candidate.score != null ? Number(candidate.score).toFixed(2) : "-"}</strong></div>
         </div>
 
         {optimizationSettings.length > 0 && <div className="detail-section">
-          <p className="section-label">OPTIMIZATION SETTINGS</p>
-          <div className="detail-settings">{optimizationSettings.map(([label, value]) => <div key={label}><small>{label}</small><strong>{value}</strong></div>)}</div>
+          <p className="section-label">{t("OPTIMIZATION SETTINGS")}</p>
+          <div className="detail-settings">{optimizationSettings.map(([label, value]) => <div key={label}><small>{t(label)}</small><strong>{value}</strong></div>)}</div>
         </div>}
 
         <div className="detail-section">
-          <p className="section-label">KPI COMPARISON</p>
+          <p className="section-label">{t("KPI COMPARISON")}</p>
           <MetricComparison failure={failure} recovery={recovery} />
         </div>
 
         <div className="detail-section">
-          <p className="section-label">CONTROL ACTIONS</p>
-          {actions.length ? <div className="detail-actions">{actions.map((action, index) => <span key={`${action.valve_id}-${index}`}>{action.status} {action.valve_id}</span>)}</div> : <p className="detail-empty">No valve action in this run.</p>}
+          <p className="section-label">{t("CONTROL ACTIONS")}</p>
+          {actions.length ? <div className="detail-actions">{actions.map((action, index) => <span key={`${action.valve_id}-${index}`}>{valveActionLabel(t, action)}</span>)}</div> : <p className="detail-empty">{t("No valve action in this run.")}</p>}
         </div>
 
         <div className="detail-footer">
-          <a className="secondary-button detail-download" href={reportUrl} target="_blank" rel="noreferrer">Open report</a>
-          <a className="secondary-button detail-download" href={jsonUrl}>Download JSON</a>
-          <a className="secondary-button detail-download" href={csvUrl}>Download CSV</a>
-          <button className="primary-button detail-close" type="button" onClick={onClose}>Close</button>
+          <a className="secondary-button detail-download" href={reportUrl} target="_blank" rel="noreferrer">{t("Open report")}</a>
+          <a className="secondary-button detail-download" href={jsonUrl}>{t("Download JSON")}</a>
+          <a className="secondary-button detail-download" href={csvUrl}>{t("Download CSV")}</a>
+          <button className="primary-button detail-close" type="button" onClick={onClose}>{t("Close")}</button>
         </div>
       </section>
     </div>

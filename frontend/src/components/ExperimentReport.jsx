@@ -1,3 +1,4 @@
+import { useLanguage } from "../language";
 import {
   Bar,
   CartesianGrid,
@@ -27,6 +28,7 @@ function ExperimentTooltip({ active, payload, label }) {
 
 
 function ExperimentReport({ result }) {
+  const { t } = useLanguage();
   const evaluation = result?.evaluation || {};
   const overall = evaluation.overall || {};
   const scenarios = (evaluation.scenarios || []).map((item) => ({
@@ -40,21 +42,21 @@ function ExperimentReport({ result }) {
   return (
     <div className="experiment-report">
       <div className="experiment-report__heading">
-        <div><p className="section-label">DECISION EVIDENCE</p><h3>GA benchmark analysis</h3></div>
-        <span>{scenarios.length} scenarios</span>
+        <div><p className="section-label">{t("DECISION EVIDENCE")}</p><h3>{t("GA benchmark analysis")}</h3></div>
+        <span>{t("{count} scenarios", { count: scenarios.length })}</span>
       </div>
 
       <div className="experiment-report__kpis">
-        <div><span>Mean score gap</span><strong>{fixed(overall.mean_score_gap)}</strong><small>points from exhaustive</small></div>
-        <div><span>Maximum gap</span><strong>{fixed(overall.maximum_score_gap)}</strong><small>worst GA deviation</small></div>
-        <div><span>Within 1 point</span><strong>{percent(overall.within_one_point_rate)}</strong><small>GA reliability</small></div>
-        <div><span>Mean speedup</span><strong>{overall.mean_speedup == null ? "--" : `${fixed(overall.mean_speedup)}x`}</strong><small>versus exhaustive</small></div>
-        <div><span>Candidate reduction</span><strong>{percent(overall.mean_candidate_reduction_rate)}</strong><small>search-space saving</small></div>
+        <div><span>{t("Mean score gap")}</span><strong>{fixed(overall.mean_score_gap)}</strong><small>{t("points from exhaustive")}</small></div>
+        <div><span>{t("Maximum gap")}</span><strong>{fixed(overall.maximum_score_gap)}</strong><small>{t("worst GA deviation")}</small></div>
+        <div><span>{t("Within 1 point")}</span><strong>{percent(overall.within_one_point_rate)}</strong><small>{t("GA reliability")}</small></div>
+        <div><span>{t("Mean speedup")}</span><strong>{overall.mean_speedup == null ? "--" : `${fixed(overall.mean_speedup)}x`}</strong><small>{t("versus exhaustive")}</small></div>
+        <div><span>{t("Candidate reduction")}</span><strong>{percent(overall.mean_candidate_reduction_rate)}</strong><small>{t("search-space saving")}</small></div>
       </div>
 
       <div className="experiment-report__charts">
         <div className="experiment-report__chart-card">
-          <div><p className="section-label">SOLUTION QUALITY</p><h4>Recovery score comparison</h4></div>
+          <div><p className="section-label">{t("SOLUTION QUALITY")}</p><h4>{t("Recovery score comparison")}</h4></div>
           <div className="experiment-report__chart">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={scenarios} margin={{ top: 12, right: 12, left: -18, bottom: 0 }}>
@@ -63,16 +65,16 @@ function ExperimentReport({ result }) {
                 <YAxis domain={[0, 100]} stroke="#7696a3" fontSize={10} />
                 <Tooltip content={<ExperimentTooltip />} />
                 <Legend wrapperStyle={{ fontSize: "10px" }} />
-                <Bar dataKey="baseline_score" name="Isolation" fill="#315f70" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="exhaustive_score" name="Exhaustive" fill="#54cfd4" radius={[2, 2, 0, 0]} />
-                <Line type="monotone" dataKey="ga_mean_score" name="GA mean" stroke="#ffba61" strokeWidth={3} dot={{ r: 3 }} />
+                <Bar dataKey="baseline_score" name={t("Isolation")} fill="#315f70" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="exhaustive_score" name={t("Exhaustive")} fill="#54cfd4" radius={[2, 2, 0, 0]} />
+                <Line type="monotone" dataKey="ga_mean_score" name={t("GA mean")} stroke="#ffba61" strokeWidth={3} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="experiment-report__chart-card">
-          <div><p className="section-label">COMPUTATIONAL EFFICIENCY</p><h4>Search reduction and speedup</h4></div>
+          <div><p className="section-label">{t("COMPUTATIONAL EFFICIENCY")}</p><h4>{t("Search reduction and speedup")}</h4></div>
           <div className="experiment-report__chart">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={scenarios} margin={{ top: 12, right: 4, left: -18, bottom: 0 }}>
@@ -82,8 +84,8 @@ function ExperimentReport({ result }) {
                 <YAxis yAxisId="speed" orientation="right" stroke="#b68b55" fontSize={10} unit="x" />
                 <Tooltip content={<ExperimentTooltip />} />
                 <Legend wrapperStyle={{ fontSize: "10px" }} />
-                <Bar yAxisId="percent" dataKey="candidate_reduction_percent" name="Candidate reduction" unit="%" fill="#54cfd4" radius={[3, 3, 0, 0]} />
-                <Line yAxisId="speed" type="monotone" dataKey="ga_speedup" name="GA speedup" unit="x" stroke="#ffba61" strokeWidth={3} dot={{ r: 3 }} />
+                <Bar yAxisId="percent" dataKey="candidate_reduction_percent" name={t("Candidate reduction")} unit="%" fill="#54cfd4" radius={[3, 3, 0, 0]} />
+                <Line yAxisId="speed" type="monotone" dataKey="ga_speedup" name={t("GA speedup")} unit="x" stroke="#ffba61" strokeWidth={3} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -92,7 +94,7 @@ function ExperimentReport({ result }) {
 
       <div className="experiment-report__table-wrap">
         <div className="experiment-report__table">
-          <div className="experiment-report__row experiment-report__row--head"><span>Scenario</span><span>Pipe</span><span>Leak area</span><span>Exhaustive</span><span>GA mean</span><span>Gap</span><span>Hit rate</span><span>Speedup</span><span>Reduction</span><span>Best seed</span></div>
+          <div className="experiment-report__row experiment-report__row--head"><span>{t("Scenario")}</span><span>{t("Pipe")}</span><span>{t("Leak area")}</span><span>{t("Exhaustive")}</span><span>{t("GA mean")}</span><span>{t("Gap")}</span><span>{t("Hit rate")}</span><span>{t("Speedup")}</span><span>{t("Reduction")}</span><span>{t("Best seed")}</span></div>
           {scenarios.map((item) => <div className="experiment-report__row" key={item.scenario_id}>
             <strong>{item.scenario_id}</strong>
             <span>{item.pipe_id}</span>
